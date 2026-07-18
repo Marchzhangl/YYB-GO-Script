@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 三福
-cron: 0 9 * * *
+# cron: 0 9 * * *
 # cron: 30 9 * * *
 import os
 import time

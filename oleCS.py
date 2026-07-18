@@ -1,5 +1,5 @@
 # name: ole超市
-cron: 16 6 * * *
+# cron: 16 6 * * *
 # cron: 30 9 * * *
 
 import requests
