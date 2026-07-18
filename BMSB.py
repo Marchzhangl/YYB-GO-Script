@@ -39,6 +39,7 @@
   * 续期条件: token 剩余有效期 < WOLF_RENEW_HOURS (默认 12) 小时, 或 token 缺失/解析失败
   * 续期成功后写入脚本同目录 wolf_token_cache_{账号ref}.json (按账号隔离); 下次运行优先使用各账号缓存中最新且有效的 token
 """
+# cron: 0 17 * * *
 
 import re
 

@@ -22,6 +22,7 @@
   socks5 代理需：
   pip install requests[socks]
 """
+# cron: 8 17 * * *
  
 import json
 import os
