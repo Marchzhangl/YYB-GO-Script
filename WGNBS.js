@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 五个女博士
-// cron: 35 8 * * *
+// // cron: 48 7 * * *
 
 const axios = require("axios");
 const fs = require("fs");

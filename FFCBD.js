@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 发发藏宝洞
-// cron: 45 9 * * *
+// // cron: 24 15 * * *
 
 const axios = require("axios");
 const fs = require("fs");

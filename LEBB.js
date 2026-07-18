@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 烈儿宝贝
-// cron: 46 9 * * *
+// // cron: 48 11 * * *
 
 const axios = require("axios");
 const fs = require("fs");

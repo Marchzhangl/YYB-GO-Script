@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 飞鹤
-// cron: 35 9 * * *
+// // cron: 16 15 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

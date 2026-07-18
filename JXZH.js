@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 匠心中华
-// cron: 26 8 * * *
+// // cron: 8 13 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

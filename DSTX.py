@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 都市甜心
-# cron: 0 0 13 * * *
+# cron: 0 16 * * *
 # -*- coding: utf-8 -*-
 
 """

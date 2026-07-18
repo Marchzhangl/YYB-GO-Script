@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 携程会员
-// cron: 48 9 * * *
+// // cron: 24 7 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

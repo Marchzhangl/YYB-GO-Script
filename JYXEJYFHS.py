@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 旧衣小二旧衣服回收
-# cron: 0 40 10 * * *
+# cron: 48 12 * * *
 # -*- coding: utf-8 -*-
  
 """

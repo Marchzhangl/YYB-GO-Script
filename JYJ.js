@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 劲友家
-// cron: 36 8 * * *
+// // cron: 0 13 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

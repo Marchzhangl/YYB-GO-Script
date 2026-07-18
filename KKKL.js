@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 可口可乐
-// cron: 0 20 9 * * *
+// // cron: 32 12 * * *
 const axios = require("axios");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 const { HttpsProxyAgent } = require("https-proxy-agent");

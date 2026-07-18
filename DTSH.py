@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: DT生活
-# cron: 0 0 8 * * *
+# cron: 48 15 * * *
 import os
 import random
 import time

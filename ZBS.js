@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 植白说
-// cron: 39 8 * * *
+// // cron: 32 6 * * *
 
 
 const axios = require("axios");

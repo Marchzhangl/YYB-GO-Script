@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: CASETiFY
-// cron: 52 9 * * *
+// // cron: 48 16 * * *
 
 const axios = require("axios");
 const fs = require("fs");

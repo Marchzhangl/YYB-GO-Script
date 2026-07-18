@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 袋鼠妈妈会员商场签到
-# cron: 0 20 12 * * *
+# cron: 8 16 * * *
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 

@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 蜜雪冰城
-// cron: 0 0 12 * * *
+// // cron: 40 10 * * *
 const axios = require("axios");
 const rs = require("jsrsasign");
 

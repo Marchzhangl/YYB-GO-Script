@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 电玩
-// cron: 51 9 * * *
+// // cron: 40 15 * * *
 
 const axios = require("axios");
 const fs = require("fs");

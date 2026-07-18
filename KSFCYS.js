@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 康师傅畅饮社
-// cron: 30 10 * * *
+// // cron: 24 12 * * *
 
 const axios = require("axios");
 const fs = require("fs");

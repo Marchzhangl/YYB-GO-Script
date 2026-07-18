@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: WPS
-// cron: 47 9 * * *
+// // cron: 32 7 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

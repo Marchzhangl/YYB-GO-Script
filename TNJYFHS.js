@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 天牛旧衣服回收
-// cron: 36 9 * * *
+// // cron: 8 8 * * *
 
 const axios = require("axios");
 const fs = require("fs");

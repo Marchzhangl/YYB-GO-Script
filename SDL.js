@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 三得利
-// cron: 0 20 8 * * *
+// // cron: 48 8 * * *
 const axios = require("axios");
 const { SocksProxyAgent } = require('socks-proxy-agent');
 const { HttpsProxyAgent } = require('https-proxy-agent');

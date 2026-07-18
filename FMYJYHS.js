@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 飞蚂蚁旧衣回收
-// cron: 0 0 14 * * *
+// // cron: 0 15 * * *
 const axios = require("axios");
 const { SocksProxyAgent } = require('socks-proxy-agent');
 const { HttpsProxyAgent } = require('https-proxy-agent');

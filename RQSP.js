@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 日清食品
-// cron: 30 8 * * *
+// // cron: 8 9 * * *
 
 const axios = require("axios");
 const fs = require("fs");

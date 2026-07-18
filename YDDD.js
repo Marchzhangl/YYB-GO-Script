@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 云朵叮叮
-// cron: 34 8 * * *
+// // cron: 0 7 * * *
 
 const axios = require("axios");
 const fs = require("fs");

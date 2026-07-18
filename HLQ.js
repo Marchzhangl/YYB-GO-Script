@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 呼啦圈
-// cron: 38 9 * * *
+// // cron: 16 14 * * *
 
 const axios = require("axios");
 const fs = require("fs");

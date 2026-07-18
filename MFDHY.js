@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 麦富迪会员
-// cron: 41 9 * * *
+// // cron: 24 11 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

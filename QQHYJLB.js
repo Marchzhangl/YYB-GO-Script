@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 洽洽会员俱乐部
-// cron: 31 8 * * *
+// // cron: 24 9 * * *
 
 const axios = require("axios");
 const fs = require("fs");

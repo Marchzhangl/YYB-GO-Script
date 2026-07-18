@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 腾讯地图
-// cron: 19 8 * * *
+// // cron: 0 8 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

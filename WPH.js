@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 唯品会
-// cron: 18 8 * * *
+// // cron: 40 7 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

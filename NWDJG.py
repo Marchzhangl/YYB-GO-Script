@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 浓五的酒馆
-# cron: 0 0 11 * * *
+# cron: 8 10 * * *
 # -*- coding: utf-8 -*-
 
 """

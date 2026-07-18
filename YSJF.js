@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 影视飓风
-// cron: 29 8 * * *
+// // cron: 40 6 * * *
 
 const axios = require("axios");
 const fs = require("fs");

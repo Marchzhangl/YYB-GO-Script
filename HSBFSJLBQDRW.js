@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 花生帮粉丝俱乐部签到任务
-// cron: 49 9 * * *
+// // cron: 0 14 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

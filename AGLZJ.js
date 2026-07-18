@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 爱果乐之家
-// cron: 41 8 * * *
+// // cron: 24 17 * * *
 
 const axios = require("axios");
 const fs = require("fs");

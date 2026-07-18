@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 途虎养车
-# cron: 0 40 12 * * *
+# cron: 24 8 * * *
 # -*- coding: utf-8 -*-
 
 """

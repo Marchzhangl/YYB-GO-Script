@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 橘子樱桃
-// cron: 40 8 * * *
+// // cron: 40 12 * * *
 
 const axios = require("axios");
 const fs = require("fs");

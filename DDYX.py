@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 铛铛一下
-# cron: 0 20 13 * * *
+# cron: 32 16 * * *
 # -*- coding: utf-8 -*-
 
 """

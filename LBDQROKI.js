@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 老板电器ROKI
-// cron: 44 8 * * *
+// // cron: 16 12 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

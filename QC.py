@@ -68,7 +68,7 @@ __atexit.register(__push)
 
 # name: 雀巢
 # name: 雀巢
-# cron: 40 13 * * *
+# cron: 40 9 * * *
 # cron: 50 14 * * *
 cron: 40 13 * * *
 # -*- coding: utf-8 -*-

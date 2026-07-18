@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 谭木匠会员俱乐部
-// cron: 44 9 * * *
+// // cron: 16 8 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

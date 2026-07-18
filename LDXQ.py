@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 绿动新球
-# cron: 0 20 11 * * *
+# cron: 0 12 * * *
 # -*- coding: utf-8 -*-
  
 """

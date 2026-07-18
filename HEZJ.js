@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 海尔智家
-// cron: 30 7 * * *
+// // cron: 24 14 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

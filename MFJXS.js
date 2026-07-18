@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 蜜蜂惊喜社
-// cron: 46 8 * * *
+// // cron: 16 11 * * *
 
 const axios = require("axios");
 const fs = require("fs");

@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 金巴厘杯中空间
-// cron: 34 9 * * *
+// // cron: 40 13 * * *
 
 const axios = require("axios");
 const fs = require("fs");

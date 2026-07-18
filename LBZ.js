@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 绿鼻子
-// cron: 43 8 * * *
+// // cron: 8 12 * * *
 
 const axios = require("axios");
 const fs = require("fs");

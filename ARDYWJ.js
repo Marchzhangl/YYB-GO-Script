@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 艾瑞调研问卷
-// cron: 45 8 * * *
+// // cron: 16 17 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

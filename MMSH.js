@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 米萌生活
-// cron: 42 8 * * *
+// // cron: 8 11 * * *
 
 const axios = require("axios");
 const fs = require("fs");

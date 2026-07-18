@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 纳爱斯品质生活
-// cron: 47 8 * * *
+// // cron: 24 10 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

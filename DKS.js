@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 戴可思
-// cron: 28 8 * * *
+// // cron: 24 16 * * *
 
 const axios = require("axios");
 const fs = require("fs");

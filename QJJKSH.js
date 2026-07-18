@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 千金健康生活
-// cron: 37 8 * * *
+// // cron: 32 9 * * *
 
 const axios = require("axios");
 const fs = require("fs");

@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 慕斯
-// cron: 30 9 * * *
+// // cron: 48 10 * * *
 
 const axios = require("axios");
 /* __YYB_GO_DOLLAR_SHIM__ */

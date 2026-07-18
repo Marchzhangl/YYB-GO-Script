@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 梦想家TSE
-// cron: 38 8 * * *
+// // cron: 32 10 * * *
 
 const axios = require("axios");
 const fs = require("fs");

@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 衣城通
-// cron: 21 8 * * *
+// // cron: 8 7 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

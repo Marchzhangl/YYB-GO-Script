@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 好人家
-// cron: 43 9 * * *
+// // cron: 8 14 * * *
 
 const axios = require("axios");
 const fs = require("fs");

@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 牛牛短剧
-// cron: 40 9 * * *
+// // cron: 16 10 * * *
 
 const axios = require("axios");
 const fs = require("fs");

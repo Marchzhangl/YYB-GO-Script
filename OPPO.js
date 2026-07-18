@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: OPPO
-// cron: 23 8 * * *
+// // cron: 48 9 * * *
 
 const axios = require("axios");
 // ====================== YYB Go 账号（环境变量 YYB_GO = 地址@微信账号标识，多行） ======================

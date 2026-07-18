@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 龙湖天街
-// cron: 42 9 * * *
+// // cron: 40 11 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");

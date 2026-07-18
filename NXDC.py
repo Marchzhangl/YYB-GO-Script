@@ -67,7 +67,7 @@ __atexit.register(__push)
 # === YYB_GO 统一通知注入 end ===
 
 # name: 奈雪的茶
-# cron: 0 0 10 * * *
+# cron: 0 10 * * *
 # -*- coding: utf-8 -*-
 """
 脚本名称：奈雪点单动态code签到

@@ -67,7 +67,7 @@
 // === YYB_GO 统一通知注入 end ===
 
 // name: 大参林
-// cron: 39 9 * * *
+// // cron: 16 16 * * *
 
 const axios = require("axios");
 const crypto = require("crypto");
