@@ -64,6 +64,8 @@ def _env(name: str, default: str = "") -> str:
 
 JD_APPID = _env("JD_APPID", CONFIG_JD_APPID)
 YYB_SERVER = _env("YYB_SERVER", CONFIG_YYB_SERVER).rstrip("/")
+if YYB_SERVER and not YYB_SERVER.startswith("http"):
+    YYB_SERVER = "http://" + YYB_SERVER
 JD_PT_APPID = _env("JD_PT_APPID", CONFIG_JD_PT_APPID)
 JD_PT_APP = _env("JD_PT_APP", CONFIG_JD_PT_APP)
 JD_PT_RETURN_URL = _env("JD_PT_RETURN_URL", CONFIG_JD_PT_RETURN_URL)
