@@ -11,7 +11,7 @@ YYB Go 适配版。
 ## 青龙订阅
 
 ```
-ql repo https://github.com/SuperNaiBA/YYB-GO-Script.git "" "" "" ""
+ql repo https://github.com/SuperNaiBA/YYB-GO-Script.git "" "SendNotify.py" "main" ""
 ```
 
 ## 注意事项
