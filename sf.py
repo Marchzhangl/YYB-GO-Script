@@ -34,6 +34,7 @@
    定时：每天运行 1 次即可，具体时间自行调整
 """
 
+# cron: 8 6 * * *
 import hashlib
 import json
 import os
