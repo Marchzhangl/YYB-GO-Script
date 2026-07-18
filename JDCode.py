@@ -66,6 +66,9 @@ JD_APPID = _env("JD_APPID", CONFIG_JD_APPID)
 YYB_SERVER = _env("YYB_SERVER", CONFIG_YYB_SERVER).rstrip("/")
 if YYB_SERVER and not YYB_SERVER.startswith("http"):
     YYB_SERVER = "http://" + YYB_SERVER
+# 多行 YYB_SERVER（地址@ref）取第一行纯地址作为 base URL
+if YYB_SERVER and '@' in YYB_SERVER.splitlines()[0]:
+    YYB_SERVER = YYB_SERVER.splitlines()[0][:YYB_SERVER.splitlines()[0].index('@')].rstrip('/')
 JD_PT_APPID = _env("JD_PT_APPID", CONFIG_JD_PT_APPID)
 JD_PT_APP = _env("JD_PT_APP", CONFIG_JD_PT_APP)
 JD_PT_RETURN_URL = _env("JD_PT_RETURN_URL", CONFIG_JD_PT_RETURN_URL)
