@@ -241,7 +241,7 @@ def do_sign(cookie):
 # ================= 主程序 =================
 def main():
     old_cookie = load_cookie()
-    accounts = get_accounts()
+    accounts = parse_yyb_go()
 
     print("账号数量:", len(accounts))
     update_cookie = {}
