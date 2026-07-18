@@ -11,7 +11,7 @@
   export QL_CLIENT_SECRET='你的client_secret'
 """
 
-# cron: 32 13 * * *
+# cron: 0 */2 * * *
 from __future__ import annotations
 
 import json
