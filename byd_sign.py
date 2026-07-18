@@ -37,15 +37,15 @@ from Crypto.Util.Padding import pad, unpad
 APP_NAME = "比亚迪海洋小程序签到"
 APPID = "wxf62054ec313d6f53"
 
-# 从环境变量 YYB_GO 读取内网服务，格式：server@wxid，每行一个
+# 从环境变量 YYB_SERVER 读取内网服务，格式：server@wxid，每行一个
 SERVERS = []
-env_YYB_GO = os.getenv("YYB_GO", "")
-if env_YYB_GO:
-    raw_lines = env_YYB_GO.splitlines()
+env_YYB_SERVER = os.getenv("YYB_SERVER", "")
+if env_YYB_SERVER:
+    raw_lines = env_YYB_SERVER.splitlines()
     SERVERS = [line.strip() for line in raw_lines if line.strip()]
 
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_GO 或无有效IP端口！")
+    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！")
     print("配置示例（青龙环境变量值，每行一个）：")
     print("127.0.0.1:8088@微信账号1")
     print("192.168.1.21:8088@微信账号2")
@@ -121,7 +121,7 @@ def parse_yyb_go_entry(raw_value):
     if not raw_value:
         return None, None
     if "@" not in raw_value:
-        print(f"❌ 配置错误：YYB_GO 格式应为 地址@微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 格式应为 地址@微信账号标识，当前值：{raw_value}")
         return None, None
     server, ref = raw_value.split("@", 1)
     server = server.strip()

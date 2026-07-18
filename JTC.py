@@ -1,4 +1,4 @@
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -16,7 +16,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -64,7 +64,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 # name: 捷停车
 # cron: 16 13 * * *
@@ -76,7 +76,7 @@ __atexit.register(__push)
 # ==============================================
 #
 # 【青龙环境变量说明】
-# YYB_GO 必填：wxcode服务地址，多地址换行填写
+# YYB_SERVER 必填：wxcode服务地址，多地址换行填写
 # PROXY_API 可选：品赞代理提取链接
 # PROXY_TYPE 可选：http / socks5，默认http
 # PLUSPLUS_TOKEN 可选：推送token
@@ -121,17 +121,17 @@ except ImportError:
     sys.exit(1)
 
 # ===================== 配置项 =====================
-# 从环境变量 YYB_GO 读取wxcode服务地址，多行换行分隔
+# 从环境变量 YYB_SERVER 读取wxcode服务地址，多行换行分隔
 SERVERS = []
-env_YYB_GO = os.getenv("YYB_GO", "")
-if env_YYB_GO:
-    raw_lines = env_YYB_GO.splitlines()
+env_YYB_SERVER = os.getenv("YYB_SERVER", "")
+if env_YYB_SERVER:
+    raw_lines = env_YYB_SERVER.splitlines()
     SERVERS = [line.strip() for line in raw_lines if line.strip()]
 
 # 无有效地址直接退出
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_GO 或无有效IP端口！")
-    print("青龙环境变量YYB_GO填写示例（每行一个地址）：")
+    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！")
+    print("青龙环境变量YYB_SERVER填写示例（每行一个地址）：")
     print("127.0.0.1:8088")
     print("192.168.1.21:8088")
     sys.exit(1)

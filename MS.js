@@ -1,4 +1,4 @@
-// === YYB_GO 统一通知注入 begin ===
+// === YYB_SERVER 统一通知注入 begin ===
 (function () {
   const __logs = [];
   const __oL = console.log.bind(console);
@@ -26,7 +26,7 @@
   function __flush() {
     if (__flushed) return;
     __flushed = true;
-    const title = (process.argv[1] || 'YYB_GO').split(/[\/]/).pop();
+    const title = (process.argv[1] || 'YYB_SERVER').split(/[\/]/).pop();
     const body = __logs.slice(-40).join('\n');
     // 1) 显式调用 sendNotify.js（满足要求）；临时静音其可能产生的报错，避免误导
     const _ol = console.log, _oe = console.error;
@@ -64,13 +64,13 @@
   };
   process.on('beforeExit', () => { if (!__exiting) { __exiting = true; try { __flush(); } catch (e) {} } });
 })();
-// === YYB_GO 统一通知注入 end ===
+// === YYB_SERVER 统一通知注入 end ===
 
 // name: 慕斯
 // // cron: 48 10 * * *
 
 const axios = require("axios");
-/* __YYB_GO_DOLLAR_SHIM__ */
+/* __YYB_SERVER_DOLLAR_SHIM__ */
 if (typeof $ === 'undefined') {
   const __path = require('path');
   global.$ = {
@@ -98,13 +98,13 @@ if (typeof $ === 'undefined') {
   };
 }
 
-// ====================== YYB Go 账号（环境变量 YYB_GO = 地址@微信账号标识，多行） ======================
-const SERVERS = (process.env.YYB_GO || "")
+// ====================== YYB Go 账号（环境变量 YYB_SERVER = 地址@微信账号标识，多行） ======================
+const SERVERS = (process.env.YYB_SERVER || "")
     .split(/\r?\n/)
     .map(s => s.trim())
     .filter(Boolean);
 if (!SERVERS.length) {
-    console.error("未配置环境变量 YYB_GO，请设置后重试（格式：地址@微信账号标识，多行换行）");
+    console.error("未配置环境变量 YYB_SERVER，请设置后重试（格式：地址@微信账号标识，多行换行）");
     process.exit(1);
 }
 function parseYybGoEntry(rawValue) {
@@ -112,7 +112,7 @@ function parseYybGoEntry(rawValue) {
     if (!value) return { server: "", ref: "" };
     const atIndex = value.indexOf("@");
     if (atIndex === -1) {
-        console.log("YYB_GO 格式应为 地址@微信账号标识，当前值: " + value);
+        console.log("YYB_SERVER 格式应为 地址@微信账号标识，当前值: " + value);
         return { server: "", ref: "" };
     }
     let server = value.slice(0, atIndex).trim();
@@ -330,7 +330,7 @@ class Task {
         }
     } else {
         
-        console.log(`${"YYB_GO"}未配置微信SERVER配置 搭建可看仓库目录下的readme.md❌`)
+        console.log(`${"YYB_SERVER"}未配置微信SERVER配置 搭建可看仓库目录下的readme.md❌`)
         return
     }
 

@@ -1,4 +1,4 @@
-// === YYB_GO 统一通知注入 begin ===
+// === YYB_SERVER 统一通知注入 begin ===
 (function () {
   const __logs = [];
   const __oL = console.log.bind(console);
@@ -26,7 +26,7 @@
   function __flush() {
     if (__flushed) return;
     __flushed = true;
-    const title = (process.argv[1] || 'YYB_GO').split(/[\/]/).pop();
+    const title = (process.argv[1] || 'YYB_SERVER').split(/[\/]/).pop();
     const body = __logs.slice(-40).join('\n');
     // 1) 显式调用 sendNotify.js（满足要求）；临时静音其可能产生的报错，避免误导
     const _ol = console.log, _oe = console.error;
@@ -64,7 +64,7 @@
   };
   process.on('beforeExit', () => { if (!__exiting) { __exiting = true; try { __flush(); } catch (e) {} } });
 })();
-// === YYB_GO 统一通知注入 end ===
+// === YYB_SERVER 统一通知注入 end ===
 
 // name: 蜜雪冰城
 // // cron: 40 10 * * *
@@ -75,9 +75,9 @@ const rs = require("jsrsasign");
 // PushPlus 通知Token（在青龙面板环境变量中设置 PLUSPLUS_TOKEN）
 const PLUSPLUS_TOKEN = process.env.PLUSPLUS_TOKEN || "";
 
-// 从环境变量 YYB_GO 读取内网wxcode服务，多条换行分隔
+// 从环境变量 YYB_SERVER 读取内网wxcode服务，多条换行分隔
 let SERVERS = [];
-const envYybGo = process.env.YYB_GO || "";
+const envYybGo = process.env.YYB_SERVER || "";
 if (envYybGo) {
     SERVERS = envYybGo
         .split(/\r?\n/)
@@ -86,7 +86,7 @@ if (envYybGo) {
 }
 // 无有效地址直接退出并提示
 if (SERVERS.length === 0) {
-    console.error("❌ 错误：未读取到环境变量 YYB_GO 或无有效IP端口！");
+    console.error("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！");
     console.error("配置示例（青龙环境变量值，每行一个）：");
     console.error("192.168.1.21:8088");
     console.error("192.168.31.111:8088");

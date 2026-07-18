@@ -322,8 +322,8 @@ def load_service_accounts() -> List[Dict[str, str]]:
 
 
 def parse_yyb_go_env() -> List[Dict[str, str]]:
-    """解析 YYB_GO 环境变量，格式：地址@微信账号标识，多行换行。"""
-    raw = _env("YYB_GO")
+    """解析 YYB_SERVER 环境变量，格式：地址@微信账号标识，多行换行。"""
+    raw = _env("YYB_SERVER")
     if not raw:
         return []
     accounts = []
@@ -333,7 +333,7 @@ def parse_yyb_go_env() -> List[Dict[str, str]]:
             continue
         at_index = value.find("@")
         if at_index == -1:
-            print(f"  [YYB_GO 第{index}行] 格式错误，缺少 @ 分隔符：{value}")
+            print(f"  [YYB_SERVER 第{index}行] 格式错误，缺少 @ 分隔符：{value}")
             continue
         server = value[:at_index].strip()
         ref = value[at_index + 1 :].strip()
@@ -344,11 +344,11 @@ def parse_yyb_go_env() -> List[Dict[str, str]]:
             server = server[8:]
         server = server.rstrip("/")
         if not server or not ref:
-            print(f"  [YYB_GO 第{index}行] 地址或 ref 为空，已跳过")
+            print(f"  [YYB_SERVER 第{index}行] 地址或 ref 为空，已跳过")
             continue
         accounts.append(
             {
-                "name": f"YYB_GO账号{index}",
+                "name": f"YYB_SERVER账号{index}",
                 "ref": ref,
                 "remark": f"{server}@{ref}",
             }

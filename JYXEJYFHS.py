@@ -1,4 +1,4 @@
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -16,7 +16,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -64,7 +64,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 # name: 旧衣小二旧衣服回收
 # cron: 48 12 * * *
@@ -108,19 +108,19 @@ import requests
 APP_NAME = "旧衣小二旧衣服回收小程序"
 APPID = "wx426d52c8130b8559"
  
-# 从环境变量 YYB_GO 读取内网 IP，多个 IP 用换行分隔
+# 从环境变量 YYB_SERVER 读取内网 IP，多个 IP 用换行分隔
 SERVERS = [
     s.strip()
-    for s in os.getenv("YYB_GO", "").splitlines()
+    for s in os.getenv("YYB_SERVER", "").splitlines()
     if s.strip()
 ]
 
 if not SERVERS:
-    print("❌ 未配置环境变量 YYB_GO，请设置后重试")
+    print("❌ 未配置环境变量 YYB_SERVER，请设置后重试")
     print("格式示例：")
-    print("  YYB_GO=127.0.0.1:8088")
+    print("  YYB_SERVER=127.0.0.1:8088")
     print("  或")
-    print("  YYB_GO=127.0.0.1:8088\\n192.168.31.36:8088\\n192.168.31.88:8088")
+    print("  YYB_SERVER=127.0.0.1:8088\\n192.168.31.36:8088\\n192.168.31.88:8088")
     exit(1)
  
 PLUSPLUS_TOKEN = os.getenv("PLUSPLUS_TOKEN", "")
@@ -367,7 +367,7 @@ def parse_yyb_go_entry(raw_value):
         return None, None
 
     if "@" not in raw_value:
-        print(f"❌ 配置错误：YYB_GO 格式应为 地址@微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 格式应为 地址@微信账号标识，当前值：{raw_value}")
         return None, None
 
     server, ref = raw_value.split("@", 1)
@@ -382,7 +382,7 @@ def parse_yyb_go_entry(raw_value):
     server = server.rstrip("/")
 
     if not server or not ref:
-        print(f"❌ 配置错误：YYB_GO 缺少地址或微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 缺少地址或微信账号标识，当前值：{raw_value}")
         return None, None
 
     return server, ref

@@ -1,4 +1,4 @@
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -16,7 +16,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -64,7 +64,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 # name: 雀巢
 # name: 雀巢
@@ -98,10 +98,10 @@ __atexit.register(__push)
 # │ PROXY_API     │ 可选     │ 品赞代理提取API链接                  │
 # │ PROXY_TYPE    │ 可选     │ 代理类型：http(默认) 或 socks5       │
 # │ PLUSPLUS_TOKEN│ 可选     │ PushPlus推送Token，用于接收任务结果  │
-# │ YYB_GO         │ 必填     │ 内网wxcode服务地址，多个换行分隔     │
+# │ YYB_SERVER         │ 必填     │ 内网wxcode服务地址，多个换行分隔     │
 # └───────────────┴──────────┴─────────────────────────────────────┘
 #
-# YYB_GO示例值（多行换行）：
+# YYB_SERVER示例值（多行换行）：
 # 127.0.0.1:8088
 # 192.168.1.21:8088
 # 10.30.9.49:8088
@@ -129,8 +129,8 @@ __atexit.register(__push)
 # 【五、常见问题排查】
 # 1. ❌ 获取code失败
 #    - 检查code服务是否正常运行
-#    - 确认YYB_GO内服务器地址和端口是否正确
-#    - 测试配置格式：YYB_GO=yyb-go:8000@你的openid
+#    - 确认YYB_SERVER内服务器地址和端口是否正确
+#    - 测试配置格式：YYB_SERVER=yyb-go:8000@你的openid
 #
 # 2. ❌ 获取token失败
 #    - 确认code未过期（有效期5分钟）
@@ -187,17 +187,17 @@ except ImportError:
     sys.exit(1)
 
 # ===================== 配置项 =====================
-# 从环境变量 YYB_GO 读取内网wxcode服务地址，多条换行分隔
+# 从环境变量 YYB_SERVER 读取内网wxcode服务地址，多条换行分隔
 SERVERS = []
-env_YYB_GO = os.getenv("YYB_GO", "")
-if env_YYB_GO:
-    raw_lines = env_YYB_GO.splitlines()
+env_YYB_SERVER = os.getenv("YYB_SERVER", "")
+if env_YYB_SERVER:
+    raw_lines = env_YYB_SERVER.splitlines()
     SERVERS = [line.strip() for line in raw_lines if line.strip()]
 
 # 无有效地址直接退出并提示
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_GO 或无有效服务地址！")
-    print("配置示例（青龙环境变量YYB_GO值，每行一个地址）：")
+    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效服务地址！")
+    print("配置示例（青龙环境变量YYB_SERVER值，每行一个地址）：")
     print("127.0.0.1:8088")
     print("192.168.1.21:8088")
     print("10.30.9.49:8088")

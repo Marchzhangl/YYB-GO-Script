@@ -44,10 +44,10 @@ def save_cookie(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-# ================= YYB_GO 环境变量解析 =================
+# ================= YYB_SERVER 环境变量解析 =================
 def parse_yyb_go():
-    """解析 YYB_GO 环境变量，格式：地址@微信账号标识，多行换行"""
-    raw = os.getenv("YYB_GO", "")
+    """解析 YYB_SERVER 环境变量，格式：地址@微信账号标识，多行换行"""
+    raw = os.getenv("YYB_SERVER", "")
     accounts = []
     for idx, line in enumerate(raw.splitlines(), 1):
         value = str(line or "").strip()
@@ -55,7 +55,7 @@ def parse_yyb_go():
             continue
         at_index = value.find("@")
         if at_index == -1:
-            print(f"  [YYB_GO 第{idx}行] 格式错误，缺少 @ 分隔符：{value}")
+            print(f"  [YYB_SERVER 第{idx}行] 格式错误，缺少 @ 分隔符：{value}")
             continue
         server = value[:at_index].strip()
         ref = value[at_index + 1 :].strip()
@@ -66,11 +66,11 @@ def parse_yyb_go():
             server = server[8:]
         server = server.rstrip("/")
         if not server or not ref:
-            print(f"  [YYB_GO 第{idx}行] 地址或 ref 为空，已跳过")
+            print(f"  [YYB_SERVER 第{idx}行] 地址或 ref 为空，已跳过")
             continue
         accounts.append(
             {
-                "name": f"YYB_GO账号{idx}",
+                "name": f"YYB_SERVER账号{idx}",
                 "ref": ref,
                 "server": server,
             }

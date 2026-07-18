@@ -1,4 +1,4 @@
-// === YYB_GO 统一通知注入 begin ===
+// === YYB_SERVER 统一通知注入 begin ===
 (function () {
   const __logs = [];
   const __oL = console.log.bind(console);
@@ -26,7 +26,7 @@
   function __flush() {
     if (__flushed) return;
     __flushed = true;
-    const title = (process.argv[1] || 'YYB_GO').split(/[\/]/).pop();
+    const title = (process.argv[1] || 'YYB_SERVER').split(/[\/]/).pop();
     const body = __logs.slice(-40).join('\n');
     // 1) 显式调用 sendNotify.js（满足要求）；临时静音其可能产生的报错，避免误导
     const _ol = console.log, _oe = console.error;
@@ -64,7 +64,7 @@
   };
   process.on('beforeExit', () => { if (!__exiting) { __exiting = true; try { __flush(); } catch (e) {} } });
 })();
-// === YYB_GO 统一通知注入 end ===
+// === YYB_SERVER 统一通知注入 end ===
 
 // name: 可口可乐
 // // cron: 32 12 * * *
@@ -80,9 +80,9 @@ delete process.env.https_proxy;
 
 const APPID = "wxa5811e0426a94686";
 
-// 从环境变量 YYB_GO 读取内网服务，多条换行分隔
+// 从环境变量 YYB_SERVER 读取内网服务，多条换行分隔
 let SERVERS = [];
-const envYybGo = process.env.YYB_GO || "";
+const envYybGo = process.env.YYB_SERVER || "";
 if (envYybGo) {
     SERVERS = envYybGo
         .split(/\r?\n/)
@@ -91,7 +91,7 @@ if (envYybGo) {
 }
 // 校验是否存在有效地址
 if (SERVERS.length === 0) {
-    console.error("❌ 错误：未读取到环境变量 YYB_GO 或无有效IP端口！");
+    console.error("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！");
     console.error("配置示例（变量值多条换行填写）：");
     console.error("127.0.0.1:8088");
     console.error("192.168.31.111:8088");
@@ -345,7 +345,7 @@ function parseYybGoEntry(rawValue) {
 
     const atIndex = value.indexOf("@");
     if (atIndex === -1) {
-        console.log(`❌ [配置] YYB_GO 格式应为 地址@微信账号标识，当前值: ${value}`);
+        console.log(`❌ [配置] YYB_SERVER 格式应为 地址@微信账号标识，当前值: ${value}`);
         return { server: "", ref: "" };
     }
 
@@ -360,7 +360,7 @@ function parseYybGoEntry(rawValue) {
     server = server.replace(/\/+$/, "");
 
     if (!server || !ref) {
-        console.log(`❌ [配置] YYB_GO 缺少地址或微信账号标识，当前值: ${value}`);
+        console.log(`❌ [配置] YYB_SERVER 缺少地址或微信账号标识，当前值: ${value}`);
         return { server: "", ref: "" };
     }
 

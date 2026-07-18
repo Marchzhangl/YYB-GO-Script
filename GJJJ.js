@@ -46,13 +46,13 @@ const SMALL_APPLICATION_ID = "667516";
 const SMALL_CRYPTO = "FH3yRrHG2RfexND8";
 const VERSION_NUMBER = "2.0.184";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) MicroMessenger/3.9.12 MiniProgramEnv/Windows WindowsWechat/WMPF";
-// ====================== YYB Go 账号（环境变量 YYB_GO = 地址@微信账号标识，多行） ======================
-const SERVERS = (process.env.YYB_GO || "")
+// ====================== YYB Go 账号（环境变量 YYB_SERVER = 地址@微信账号标识，多行） ======================
+const SERVERS = (process.env.YYB_SERVER || "")
     .split(/\r?\n/)
     .map(s => s.trim())
     .filter(Boolean);
 if (!SERVERS.length) {
-    console.error("未配置环境变量 YYB_GO，请设置后重试（格式：地址@微信账号标识，多行换行）");
+    console.error("未配置环境变量 YYB_SERVER，请设置后重试（格式：地址@微信账号标识，多行换行）");
     process.exit(1);
 }
 function parseYybGoEntry(rawValue) {
@@ -60,7 +60,7 @@ function parseYybGoEntry(rawValue) {
     if (!value) return { server: "", ref: "" };
     const atIndex = value.indexOf("@");
     if (atIndex === -1) {
-        console.log("YYB_GO 格式应为 地址@微信账号标识，当前值: " + value);
+        console.log("YYB_SERVER 格式应为 地址@微信账号标识，当前值: " + value);
         return { server: "", ref: "" };
     }
     let server = value.slice(0, atIndex).trim();
@@ -214,7 +214,7 @@ class Task {
 
   async getWxCode() {
     const { server, ref } = parseYybGoEntry(SERVERS[this.index - 1] || "");
-    if (!server || !ref) throw new Error("YYB_GO 配置解析失败");
+    if (!server || !ref) throw new Error("YYB_SERVER 配置解析失败");
     const url = "http://" + server + "/wxapp/getCode";
     const res = await axios.request({
       method: "POST",

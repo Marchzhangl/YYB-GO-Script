@@ -7,8 +7,8 @@
 功能:
   1. 自动调用 wolf-order/createContribution 赚取积分 (250积分/次)
   2. 每天运行前自动检测 uniIdToken(JWT) 有效期
-  3. 即将过期/已过期时, 通过 YYB_GO 取码服务自动续期:
-       YYB_GO /wxapp/getCode -> 微信登录 code
+  3. 即将过期/已过期时, 通过 YYB_SERVER 取码服务自动续期:
+       YYB_SERVER /wxapp/getCode -> 微信登录 code
        -> uni-id-co loginByWeixin -> 新 uniIdToken
   4. 续期后的新 token 写入本地缓存, 并可写回青龙环境变量
 
@@ -18,11 +18,11 @@
 ------------------------------------------------------------
 环境变量 (青龙面板添加):
   必需:
-    YYB_GO                - YYB_GO 取码服务 (格式 地址@微信账号标识, 可多行=多账号; 每个微信独立取码并自动续期 token)
+    YYB_SERVER                - YYB_SERVER 取码服务 (格式 地址@微信账号标识, 可多行=多账号; 每个微信独立取码并自动续期 token)
   可选:
     WOLF_UID              - 你自己的用户ID [多账号可留空! 脚本登录后会自动从响应提取每个账号的 uid]
     WOLF_UNI_ID_TOKEN     - uniIdToken(JWT)  [首次运行填一个即可; 之后脚本自动续期, 可留空]
-    WOLF_YYB_GO_ENTRY    - 指定只跑 YYB_GO 中某一行账号 (填完整行, 如 172.17.0.4:8000@xxx); 不填则自动遍历所有行 (多账号)
+    WOLF_YYB_SERVER_ENTRY    - 指定只跑 YYB_SERVER 中某一行账号 (填完整行, 如 172.17.0.4:8000@xxx); 不填则自动遍历所有行 (多账号)
     WOLF_MAX_RUNS         - 每次运行最大调用次数 (默认 20)
     WOLF_QYWX_KEY         - 企业微信Webhook Key (运行结果通知, 可选)
     WOLF_APPID            - 目标小程序appid (默认 wxe6cb23a7f02277ed = 宝妈上班, 不变)
@@ -43,7 +43,7 @@
 
 import re
 
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -61,7 +61,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -108,7 +108,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 import hmac
 import hashlib
@@ -151,8 +151,8 @@ TOKEN_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wolf
 CACHE_PATH = os.path.join(TOKEN_CACHE_DIR, "wolf_token_cache.json")
 
 
-# ============ YYB_GO 取码服务 (地址@微信账号标识 多行) ============
-YYB_GO_RAW = os.environ.get("YYB_GO", "")
+# ============ YYB_SERVER 取码服务 (地址@微信账号标识 多行) ============
+YYB_SERVER_RAW = os.environ.get("YYB_SERVER", "")
 
 def parse_yyb_go_entry(raw):
     value = (raw or "").strip()
@@ -160,7 +160,7 @@ def parse_yyb_go_entry(raw):
         return None, None
     at = value.find("@")
     if at == -1:
-        print(f"  [YYB_GO] 格式应为 地址@微信账号标识, 当前值: {value}")
+        print(f"  [YYB_SERVER] 格式应为 地址@微信账号标识, 当前值: {value}")
         return None, None
     server = value[:at].strip()
     ref = value[at + 1:].strip()
@@ -174,24 +174,24 @@ def parse_yyb_go_entry(raw):
     return server, ref
 
 def get_yyb_go_code(entry):
-    """通过 YYB_GO 服务获取指定账号的微信登录 code (entry 格式: 地址@微信账号标识)"""
+    """通过 YYB_SERVER 服务获取指定账号的微信登录 code (entry 格式: 地址@微信账号标识)"""
     if not entry:
         return None
     server, ref = parse_yyb_go_entry(entry)
     if not server or not ref:
-        print(f"  [YYB_GO] 无效 entry: {entry}")
+        print(f"  [YYB_SERVER] 无效 entry: {entry}")
         return None
     try:
         url = f"http://{server}/wxapp/getCode"
         r = requests.post(url, json={"ref": ref, "app_id": TARGET_APPID}, timeout=20).json()
         code = r.get("data", {}).get("result", {}).get("code")
         if r.get("code") != 0 or not code:
-            print(f"  [YYB_GO] 取码失败 ({ref}): {json.dumps(r, ensure_ascii=False)[:200]}")
+            print(f"  [YYB_SERVER] 取码失败 ({ref}): {json.dumps(r, ensure_ascii=False)[:200]}")
             return None
-        print(f"  [YYB_GO] 取码成功 ({server})")
+        print(f"  [YYB_SERVER] 取码成功 ({server})")
         return code
     except Exception as e:
-        print(f"  [YYB_GO] 取码异常: {e}")
+        print(f"  [YYB_SERVER] 取码异常: {e}")
         return None
 
 
@@ -348,16 +348,16 @@ def save_cache(token, path=None):
 
 
 def fetch_wx_code(entry):
-    """获取微信登录 code (仅通过 YYB_GO 取码服务)"""
+    """获取微信登录 code (仅通过 YYB_SERVER 取码服务)"""
     return get_yyb_go_code(entry)
 
 
 def renew_token(entry):
-    """完整续期: YYB_GO取码 -> uni-id-co loginByWeixin -> 新 uniIdToken"""
+    """完整续期: YYB_SERVER取码 -> uni-id-co loginByWeixin -> 新 uniIdToken"""
     if not entry:
-        print("  [续期] 缺少 YYB_GO 账号配置 (entry 为空)")
+        print("  [续期] 缺少 YYB_SERVER 账号配置 (entry 为空)")
         return None
-    print("  [续期] 步骤1: 从 YYB_GO 获取微信登录 code ...")
+    print("  [续期] 步骤1: 从 YYB_SERVER 获取微信登录 code ...")
     code = fetch_wx_code(entry)
     if not code:
         return None
@@ -515,13 +515,13 @@ def extract_uid():
     return None
 
 
-# 注: 通知已统一由文件顶部「YYB_GO 统一通知注入」块在退出时收集完整日志并推送,
+# 注: 通知已统一由文件顶部「YYB_SERVER 统一通知注入」块在退出时收集完整日志并推送,
 #     任何退出路径 (成功/失败/零成功/异常) 都会发送, 无需此处单独 send_notify。
 
 
 # ============ 主流程 ============
 def run_account(entry, allow_env=True):
-    """为单个 YYB_GO 账号执行完整流程, 返回汇总 dict"""
+    """为单个 YYB_SERVER 账号执行完整流程, 返回汇总 dict"""
     server, ref = parse_yyb_go_entry(entry)
     if not server or not ref:
         print(f"\n  [账号] 跳过无效 entry: {entry}")
@@ -607,28 +607,28 @@ def main():
     print("  宝妈上班 自动赚取贡献值 (多账号版, 含自动续期)")
     print("=" * 50)
 
-    if not YYB_GO_RAW:
-        print("  缺少 YYB_GO 配置, 退出")
+    if not YYB_SERVER_RAW:
+        print("  缺少 YYB_SERVER 配置, 退出")
         sys.exit(1)
 
-    entries = [e for e in YYB_GO_RAW.splitlines() if e.strip()]
+    entries = [e for e in YYB_SERVER_RAW.splitlines() if e.strip()]
     if not entries:
-        print("  YYB_GO 为空, 退出")
+        print("  YYB_SERVER 为空, 退出")
         sys.exit(1)
 
-    # 兼容: 指定 WOLF_YYB_GO_ENTRY 则只跑该行 (便于单独调试某个账号)
-    sel = os.environ.get("WOLF_YYB_GO_ENTRY", "").strip()
+    # 兼容: 指定 WOLF_YYB_SERVER_ENTRY 则只跑该行 (便于单独调试某个账号)
+    sel = os.environ.get("WOLF_YYB_SERVER_ENTRY", "").strip()
     if sel:
         entries = [sel]
-        print(f"  (已指定 WOLF_YYB_GO_ENTRY, 仅运行: {sel})")
+        print(f"  (已指定 WOLF_YYB_SERVER_ENTRY, 仅运行: {sel})")
     print(f"  共 {len(entries)} 个账号待运行\n")
 
     # 多账号模式必须禁用 env token 共享: 否则第2/3...个账号会复用 WOLF_UNI_ID_TOKEN
     # (第一个账号的身份), 导致所有账号都在操作同一个 uid。多账号下每个账号只用自己
-    # 通过 YYB_GO 取码续期得到的隔离缓存 token。
+    # 通过 YYB_SERVER 取码续期得到的隔离缓存 token。
     allow_env = (len(entries) == 1)
     if not allow_env and UNI_ID_TOKEN.strip():
-        print("  [多账号] 已禁用 WOLF_UNI_ID_TOKEN 共享, 每个账号将各自通过 YYB_GO 取码续期\n")
+        print("  [多账号] 已禁用 WOLF_UNI_ID_TOKEN 共享, 每个账号将各自通过 YYB_SERVER 取码续期\n")
 
     results = []
     for idx, entry in enumerate(entries, 1):
@@ -652,12 +652,12 @@ def main():
     uids = [r.get("uid") for r in results if r.get("uid")]
     if len(entries) > 1 and len(uids) != len(set(uids)):
         dup = [u for u in set(uids) if uids.count(u) > 1]
-        print(f"\n  ⚠️ 检测到重复 uid {dup}: 仍有账号在共用同一身份 token, 请检查对应微信是否已在 YYB_GO 登录授权!")
+        print(f"\n  ⚠️ 检测到重复 uid {dup}: 仍有账号在共用同一身份 token, 请检查对应微信是否已在 YYB_SERVER 登录授权!")
 
     # 单账号模式下, 若续期成功则写回青龙环境变量 (多账号不写回, 避免覆盖)
     if len(results) == 1 and results[0].get("src") == "renewed":
         update_qinglong_env("WOLF_UNI_ID_TOKEN", UNI_ID_TOKEN)
-    # 通知由顶部「YYB_GO 统一通知注入」块在退出时统一推送
+    # 通知由顶部「YYB_SERVER 统一通知注入」块在退出时统一推送
 
 
 if __name__ == "__main__":

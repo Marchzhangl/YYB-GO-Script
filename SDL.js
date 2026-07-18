@@ -1,4 +1,4 @@
-// === YYB_GO 统一通知注入 begin ===
+// === YYB_SERVER 统一通知注入 begin ===
 (function () {
   const __logs = [];
   const __oL = console.log.bind(console);
@@ -26,7 +26,7 @@
   function __flush() {
     if (__flushed) return;
     __flushed = true;
-    const title = (process.argv[1] || 'YYB_GO').split(/[\/]/).pop();
+    const title = (process.argv[1] || 'YYB_SERVER').split(/[\/]/).pop();
     const body = __logs.slice(-40).join('\n');
     // 1) 显式调用 sendNotify.js（满足要求）；临时静音其可能产生的报错，避免误导
     const _ol = console.log, _oe = console.error;
@@ -64,7 +64,7 @@
   };
   process.on('beforeExit', () => { if (!__exiting) { __exiting = true; try { __flush(); } catch (e) {} } });
 })();
-// === YYB_GO 统一通知注入 end ===
+// === YYB_SERVER 统一通知注入 end ===
 
 // name: 三得利
 // // cron: 48 8 * * *
@@ -83,17 +83,17 @@ delete process.env.https_proxy;
 // PushPlus 通知Token（青龙环境变量）
 const PLUSPLUS_TOKEN = process.env.PLUSPLUS_TOKEN || "";
 
-// 从环境变量 YYB_GO 读取内网服务器，支持换行分隔多个IP:端口
+// 从环境变量 YYB_SERVER 读取内网服务器，支持换行分隔多个IP:端口
 let SERVERS = [];
-if (process.env.YYB_GO) {
-    SERVERS = process.env.YYB_GO
+if (process.env.YYB_SERVER) {
+    SERVERS = process.env.YYB_SERVER
         .split(/\r?\n/) // 兼容Windows换行\r\n、Linux换行\n
         .map(item => item.trim())
         .filter(item => item.length > 0); // 过滤空行、纯空格行
 }
 // 校验服务器列表，无配置直接终止脚本
 if (SERVERS.length === 0) {
-    console.error("❌ 未读取到环境变量 YYB_GO，请配置 YYB_GO，多个地址换行填写，格式示例：");
+    console.error("❌ 未读取到环境变量 YYB_SERVER，请配置 YYB_SERVER，多个地址换行填写，格式示例：");
     console.error("192.168.1.21:8088\n192.168.31.111:8088");
     process.exit(1);
 }
@@ -321,7 +321,7 @@ function parseYybGoEntry(rawValue) {
 
     const atIndex = value.indexOf("@");
     if (atIndex === -1) {
-        console.log(`❌ [配置] YYB_GO 格式应为 地址@微信账号标识，当前值: ${value}`);
+        console.log(`❌ [配置] YYB_SERVER 格式应为 地址@微信账号标识，当前值: ${value}`);
         return { server: "", ref: "" };
     }
 
@@ -336,7 +336,7 @@ function parseYybGoEntry(rawValue) {
     server = server.replace(/\/+$/, "");
 
     if (!server || !ref) {
-        console.log(`❌ [配置] YYB_GO 缺少地址或微信账号标识，当前值: ${value}`);
+        console.log(`❌ [配置] YYB_SERVER 缺少地址或微信账号标识，当前值: ${value}`);
         return { server: "", ref: "" };
     }
 
@@ -552,7 +552,7 @@ async function runAccount(server, globalProxyAgent) {
 
 // ===================== 主程序 =====================
 (async () => {
-    console.log('===== 三得利动态code签到（环境变量YYB_GO读取内网+双端口+每个账号独立代理版）=====\n');
+    console.log('===== 三得利动态code签到（环境变量YYB_SERVER读取内网+双端口+每个账号独立代理版）=====\n');
 
     // 兼容旧逻辑：如果关闭了单账号代理，就全局获取一个共用代理
     let globalProxyAgent = null;

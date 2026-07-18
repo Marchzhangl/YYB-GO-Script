@@ -1,4 +1,4 @@
-// === YYB_GO 统一通知注入 begin ===
+// === YYB_SERVER 统一通知注入 begin ===
 (function () {
   const __logs = [];
   const __oL = console.log.bind(console);
@@ -26,7 +26,7 @@
   function __flush() {
     if (__flushed) return;
     __flushed = true;
-    const title = (process.argv[1] || 'YYB_GO').split(/[\/]/).pop();
+    const title = (process.argv[1] || 'YYB_SERVER').split(/[\/]/).pop();
     const body = __logs.slice(-40).join('\n');
     // 1) 显式调用 sendNotify.js（满足要求）；临时静音其可能产生的报错，避免误导
     const _ol = console.log, _oe = console.error;
@@ -64,7 +64,7 @@
   };
   process.on('beforeExit', () => { if (!__exiting) { __exiting = true; try { __flush(); } catch (e) {} } });
 })();
-// === YYB_GO 统一通知注入 end ===
+// === YYB_SERVER 统一通知注入 end ===
 
 // name: 美的会员
 // // cron: 32 11 * * *
@@ -101,18 +101,18 @@ delete process.env.https_proxy;
 
 const APPID = "wx49a622805968d156";
 
-// 从环境变量 YYB_GO 读取内网 IP，多个 IP 用换行分隔
-const SERVERS = (process.env.YYB_GO || "")
+// 从环境变量 YYB_SERVER 读取内网 IP，多个 IP 用换行分隔
+const SERVERS = (process.env.YYB_SERVER || "")
     .split(/\r?\n/)
     .map(s => s.trim())
     .filter(Boolean);
 
 if (!SERVERS.length) {
-    console.log("❌ 未配置环境变量 YYB_GO，请设置后重试");
+    console.log("❌ 未配置环境变量 YYB_SERVER，请设置后重试");
     console.log("格式示例：");
-    console.log("  YYB_GO=127.0.0.1:8088");
+    console.log("  YYB_SERVER=127.0.0.1:8088");
     console.log("  或");
-    console.log("  YYB_GO=127.0.0.1:8088\\n192.168.31.36:8088\\n192.168.31.88:8088");
+    console.log("  YYB_SERVER=127.0.0.1:8088\\n192.168.31.36:8088\\n192.168.31.88:8088");
     process.exit(1);
 }
 
@@ -381,7 +381,7 @@ function parseYybGoEntry(rawValue) {
 
     const atIndex = value.indexOf("@");
     if (atIndex === -1) {
-        console.log(`❌ [配置] YYB_GO 格式应为 地址@微信账号标识，当前值: ${value}`);
+        console.log(`❌ [配置] YYB_SERVER 格式应为 地址@微信账号标识，当前值: ${value}`);
         return { server: "", ref: "" };
     }
 
@@ -396,7 +396,7 @@ function parseYybGoEntry(rawValue) {
     server = server.replace(/\/+$/, "");
 
     if (!server || !ref) {
-        console.log(`❌ [配置] YYB_GO 缺少地址或微信账号标识，当前值: ${value}`);
+        console.log(`❌ [配置] YYB_SERVER 缺少地址或微信账号标识，当前值: ${value}`);
         return { server: "", ref: "" };
     }
 

@@ -1,4 +1,4 @@
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -16,7 +16,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -64,7 +64,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 # name: DT生活
 # cron: 48 15 * * *
@@ -85,17 +85,17 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 APP_ID = "wx51a2021dd921f747"
 PLUSPLUS_TOKEN = os.getenv("PLUSPLUS_TOKEN", "")
 
-# 从环境变量 YYB_GO 读取内网登录接口，多条换行分隔
+# 从环境变量 YYB_SERVER 读取内网登录接口，多条换行分隔
 CODE_URL_LIST = []
-env_YYB_GO = os.getenv("YYB_GO", "")
-if env_YYB_GO:
+env_YYB_SERVER = os.getenv("YYB_SERVER", "")
+if env_YYB_SERVER:
     # 兼容 \r\n 和 \n 换行，去除每行前后空格，过滤空行
-    raw_lines = env_YYB_GO.splitlines()
+    raw_lines = env_YYB_SERVER.splitlines()
     CODE_URL_LIST = [line.strip() for line in raw_lines if line.strip()]
 
 # 校验是否存在有效服务地址
 if len(CODE_URL_LIST) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_GO 或无有效地址！")
+    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效地址！")
     print("配置示例（变量值多条换行填写）：")
     print("http://192.168.1.21:8088/login")
     print("http://192.168.1.7:8088/login")
@@ -574,7 +574,7 @@ def run_account(code_url, index, global_proxy_config):
         }
 
 if __name__ == "__main__":
-    print('===== DT生活签到（环境变量YYB_GO读取内网多服务+独立代理版）=====\n')
+    print('===== DT生活签到（环境变量YYB_SERVER读取内网多服务+独立代理版）=====\n')
 
     # 兼容旧逻辑：如果关闭了单账号代理，就全局获取一个共用代理
     global_proxy_config = None

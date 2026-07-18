@@ -1,4 +1,4 @@
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -16,7 +16,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -64,7 +64,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 # name: 浓五的酒馆
 # cron: 8 10 * * *
@@ -85,7 +85,7 @@ __atexit.register(__push)
   PLUSPLUS_TOKEN    PushPlus token，可选
   PROXY_API         品赞代理提取 API，可选
   PROXY_TYPE        http / socks5，默认 http
-  YYB_GO             内网wxcode服务地址，多个换行分隔，格式：192.168.1.21:8088
+  YYB_SERVER             内网wxcode服务地址，多个换行分隔，格式：192.168.1.21:8088
 
 依赖：
   pip install requests
@@ -109,16 +109,16 @@ APP_NAME = "浓五的酒馆小程序"
 APPID = "wxed3cf95a14b58a26"
 PROMOTION_ID = "PI6a41ee59886bd1000a158d9b"
 
-# 从环境变量 YYB_GO 读取内网服务，多条换行分隔
+# 从环境变量 YYB_SERVER 读取内网服务，多条换行分隔
 SERVERS = []
-env_YYB_GO = os.getenv("YYB_GO", "")
-if env_YYB_GO:
-    raw_lines = env_YYB_GO.splitlines()
+env_YYB_SERVER = os.getenv("YYB_SERVER", "")
+if env_YYB_SERVER:
+    raw_lines = env_YYB_SERVER.splitlines()
     SERVERS = [line.strip() for line in raw_lines if line.strip()]
 
 # 校验无有效地址直接退出
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_GO 或无有效IP端口！")
+    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！")
     print("配置示例（青龙环境变量值，每行一个）：")
     print("127.0.0.1:8088")
     print("192.168.1.21:8088")
@@ -381,7 +381,7 @@ def parse_yyb_go_entry(raw_value):
         return None, None
 
     if "@" not in raw_value:
-        print(f"❌ 配置错误：YYB_GO 格式应为 地址@微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 格式应为 地址@微信账号标识，当前值：{raw_value}")
         return None, None
 
     server, ref = raw_value.split("@", 1)
@@ -396,7 +396,7 @@ def parse_yyb_go_entry(raw_value):
     server = server.rstrip("/")
 
     if not server or not ref:
-        print(f"❌ 配置错误：YYB_GO 缺少地址或微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 缺少地址或微信账号标识，当前值：{raw_value}")
         return None, None
 
     return server, ref

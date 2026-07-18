@@ -1,4 +1,4 @@
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -16,7 +16,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -64,7 +64,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 # name: 铛铛一下
 # cron: 32 16 * * *
@@ -74,7 +74,7 @@ __atexit.register(__push)
 铛铛一下旧衣服回收动态 code 版
 
 功能：
-  1. 多地址本地服务获取微信 code（从环境变量 YYB_GO 读取，换行分隔）
+  1. 多地址本地服务获取微信 code（从环境变量 YYB_SERVER 读取，换行分隔）
   2. /wechat/login 使用 code 换 token
   3. 每日签到
   4. 抽奖
@@ -84,7 +84,7 @@ __atexit.register(__push)
   8. 品赞代理，业务请求优先代理，失败直连兜底
 
 环境变量：
-  YYB_GO             必填：wxcode服务地址，多地址换行填写
+  YYB_SERVER             必填：wxcode服务地址，多地址换行填写
   PLUSPLUS_TOKEN    PushPlus token，可选
   PROXY_API         品赞代理提取 API，可选
   PROXY_TYPE        http / socks5，默认 http
@@ -111,18 +111,18 @@ import requests
 APP_NAME = "铛铛一下旧衣服回收小程序"
 APPID = "wxe378d2d7636c180e"
 
-# ========== 修改点：从环境变量 YYB_GO 读取服务地址，换行分割 ==========
+# ========== 修改点：从环境变量 YYB_SERVER 读取服务地址，换行分割 ==========
 SERVERS = []
-env_YYB_GO = os.getenv("YYB_GO", "")
-if env_YYB_GO:
-    raw_lines = env_YYB_GO.splitlines()
+env_YYB_SERVER = os.getenv("YYB_SERVER", "")
+if env_YYB_SERVER:
+    raw_lines = env_YYB_SERVER.splitlines()
     # 去除每行首尾空格、过滤空行
     SERVERS = [line.strip() for line in raw_lines if line.strip()]
 
 # 无有效地址直接退出
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_GO 或无有效IP端口！")
-    print("青龙环境变量YYB_GO填写示例（每行一个地址）：")
+    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！")
+    print("青龙环境变量YYB_SERVER填写示例（每行一个地址）：")
     print("127.0.0.1:8088")
     print("192.168.31.36:8088")
     print("192.168.31.88:8088")
@@ -393,7 +393,7 @@ def parse_yyb_go_entry(raw_value):
         return None, None
 
     if "@" not in raw_value:
-        print(f"❌ 配置错误：YYB_GO 格式应为 地址@微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 格式应为 地址@微信账号标识，当前值：{raw_value}")
         return None, None
 
     server, ref = raw_value.split("@", 1)
@@ -408,7 +408,7 @@ def parse_yyb_go_entry(raw_value):
     server = server.rstrip("/")
 
     if not server or not ref:
-        print(f"❌ 配置错误：YYB_GO 缺少地址或微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 缺少地址或微信账号标识，当前值：{raw_value}")
         return None, None
 
     return server, ref

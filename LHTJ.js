@@ -1,4 +1,4 @@
-// === YYB_GO 统一通知注入 begin ===
+// === YYB_SERVER 统一通知注入 begin ===
 (function () {
   const __logs = [];
   const __oL = console.log.bind(console);
@@ -26,7 +26,7 @@
   function __flush() {
     if (__flushed) return;
     __flushed = true;
-    const title = (process.argv[1] || 'YYB_GO').split(/[\/]/).pop();
+    const title = (process.argv[1] || 'YYB_SERVER').split(/[\/]/).pop();
     const body = __logs.slice(-40).join('\n');
     // 1) 显式调用 sendNotify.js（满足要求）；临时静音其可能产生的报错，避免误导
     const _ol = console.log, _oe = console.error;
@@ -64,7 +64,7 @@
   };
   process.on('beforeExit', () => { if (!__exiting) { __exiting = true; try { __flush(); } catch (e) {} } });
 })();
-// === YYB_GO 统一通知注入 end ===
+// === YYB_SERVER 统一通知注入 end ===
 
 // name: 龙湖天街
 // // cron: 40 11 * * *
@@ -73,15 +73,15 @@ const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-// ====================== YYB Go 账号（环境变量 YYB_GO = 多行，每行 地址@微信账号标识） ======================
+// ====================== YYB Go 账号（环境变量 YYB_SERVER = 多行，每行 地址@微信账号标识） ======================
 // 任何形如 [object Object] 或不含 @ 的脏行都会被自动跳过，不影响其他有效账号。
 function buildServers() {
-    const raw = String(process.env.YYB_GO || "").trim();
+    const raw = String(process.env.YYB_SERVER || "").trim();
     if (!raw) {
-        console.error("未配置环境变量 YYB_GO，请设置后重试（格式：地址@微信账号标识，多行换行）");
+        console.error("未配置环境变量 YYB_SERVER，请设置后重试（格式：地址@微信账号标识，多行换行）");
         process.exit(1);
     }
-    console.log("YYB_GO 原始内容(前200字): " + raw.slice(0, 200).replace(/\r/g, "").replace(/\n/g, "\\n"));
+    console.log("YYB_SERVER 原始内容(前200字): " + raw.slice(0, 200).replace(/\r/g, "").replace(/\n/g, "\\n"));
     return raw
         .split(/\r?\n/)
         .map(s => String(s).trim())
@@ -92,7 +92,7 @@ function buildServers() {
                 return false;
             }
             if (!line.includes("@")) {
-                console.log("YYB_GO 格式应为 地址@微信账号标识，已跳过当前值: " + line);
+                console.log("YYB_SERVER 格式应为 地址@微信账号标识，已跳过当前值: " + line);
                 return false;
             }
             return true;
@@ -100,7 +100,7 @@ function buildServers() {
 }
 const SERVERS = buildServers();
 if (!SERVERS.length) {
-    console.error("未配置有效的 YYB_GO 账号（每行格式：地址@微信账号标识）");
+    console.error("未配置有效的 YYB_SERVER 账号（每行格式：地址@微信账号标识）");
     process.exit(1);
 }
 function parseYybGoEntry(rawValue) {
@@ -108,7 +108,7 @@ function parseYybGoEntry(rawValue) {
     if (!value) return { server: "", ref: "" };
     const atIndex = value.indexOf("@");
     if (atIndex === -1) {
-        console.log("YYB_GO 格式应为 地址@微信账号标识，当前值: " + value);
+        console.log("YYB_SERVER 格式应为 地址@微信账号标识，当前值: " + value);
         return { server: "", ref: "" };
     }
     let server = value.slice(0, atIndex).trim();
@@ -532,14 +532,14 @@ class Task {
 
     async getLoginCode() {
         const code = await getCode(this.server);
-        if (!code) console.log(`账号[${this.index}] 获取微信code失败：请检查 YYB_GO 格式是否为 地址@微信账号标识（每行一个）且 YYB Go 服务可访问`);
+        if (!code) console.log(`账号[${this.index}] 获取微信code失败：请检查 YYB_SERVER 格式是否为 地址@微信账号标识（每行一个）且 YYB Go 服务可访问`);
         return code;
     }
 
     async loginByWxCode() {
         const code = await this.getLoginCode();
         if (!code) {
-            throw new Error(`获取微信code失败：请检查 YYB_GO 中该账号在 YYB Go 是否已绑定龙湖天街小程序（appId ${MINI_APP_ID}）`);
+            throw new Error(`获取微信code失败：请检查 YYB_SERVER 中该账号在 YYB Go 是否已绑定龙湖天街小程序（appId ${MINI_APP_ID}）`);
         }
         const checkData = {
             appId: MINI_APP_ID,

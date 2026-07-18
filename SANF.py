@@ -1,4 +1,4 @@
-# === YYB_GO 统一通知注入 begin ===
+# === YYB_SERVER 统一通知注入 begin ===
 import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
 _yyb_logs = []
 class __LogHook(__io.TextIOBase):
@@ -16,7 +16,7 @@ def __push():
     if __pushed: return
     try:
         body = '\n'.join(_yyb_logs[-40:])
-        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_GO'
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
         sn = None
         try:
             from sendNotify import sendNotify as _sn
@@ -64,7 +64,7 @@ try: __os._exit = __patched_os_exit
 except Exception: pass
 
 __atexit.register(__push)
-# === YYB_GO 统一通知注入 end ===
+# === YYB_SERVER 统一通知注入 end ===
 
 # name: 三福
 # cron: 0 9 * * *
@@ -84,17 +84,17 @@ for env_key in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"]:
 # ===================== 配置项 =====================
 PLUSPLUS_TOKEN = os.getenv("PLUSPLUS_TOKEN", "")
 
-# 从环境变量 YYB_GO 读取内网服务器，多条换行分隔
+# 从环境变量 YYB_SERVER 读取内网服务器，多条换行分隔
 SERVERS = []
-env_YYB_GO = os.getenv("YYB_GO", "")
-if env_YYB_GO:
+env_YYB_SERVER = os.getenv("YYB_SERVER", "")
+if env_YYB_SERVER:
     # 兼容 \r\n 和 \n 换行，去除每行前后空格，过滤空行
-    raw_lines = env_YYB_GO.splitlines()
+    raw_lines = env_YYB_SERVER.splitlines()
     SERVERS = [line.strip() for line in raw_lines if line.strip()]
 
 # 校验是否存在有效服务地址
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_GO 或无有效地址！")
+    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效地址！")
     print("配置示例（变量值多条换行填写）：")
     print("192.168.1.21:8088")
     print("192.168.31.111:8088")
@@ -255,7 +255,7 @@ def parse_yyb_go_entry(raw_value):
         return None, None
 
     if "@" not in raw_value:
-        print(f"❌ 配置错误：YYB_GO 格式应为 地址@微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 格式应为 地址@微信账号标识，当前值：{raw_value}")
         return None, None
 
     server, ref = raw_value.split("@", 1)
@@ -270,7 +270,7 @@ def parse_yyb_go_entry(raw_value):
     server = server.rstrip("/")
 
     if not server or not ref:
-        print(f"❌ 配置错误：YYB_GO 缺少地址或微信账号标识，当前值：{raw_value}")
+        print(f"❌ 配置错误：YYB_SERVER 缺少地址或微信账号标识，当前值：{raw_value}")
         return None, None
 
     return server, ref
@@ -467,7 +467,7 @@ async def runAccount(server, globalProxyAgent):
 
 # ===================== 主程序 =====================
 async def main():
-    print('===== 三福动态code签到（环境变量YYB_GO多内网+品赞代理+sid鉴权修复版）=====\n')
+    print('===== 三福动态code签到（环境变量YYB_SERVER多内网+品赞代理+sid鉴权修复版）=====\n')
     globalProxyAgent = None
     if not ENABLE_PER_ACCOUNT_PROXY:
         globalProxyAgent = await getValidProxy("全局共用")
