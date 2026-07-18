@@ -1037,7 +1037,7 @@ def sync_ql(
         item_id = env_id(existing)
         if item_id in (None, ""):
             raise RuntimeError("已有青龙变量缺少 id/_id")
-        update_ql_env(token, item_id, value, remark)
+        update_ql_env(token, item_id, value, existing.get("remarks") or remark)
         enable_ql_env(token, item_id)
         return "update"
     create_ql_env(token, value, remark)
