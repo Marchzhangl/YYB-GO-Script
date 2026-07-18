@@ -246,10 +246,10 @@ def main():
     print("账号数量:", len(accounts))
     update_cookie = {}
 
-    for account in accounts:
+    for idx, account in enumerate(accounts, 1):
         try:
-            aid = str(account.get("id"))
-            nickname = account.get("nickname", aid)
+            aid = str(idx)
+            nickname = account.get("name", aid)
             print(f"\n账号: {nickname}")
 
             cookie = old_cookie.get(aid)
@@ -276,7 +276,7 @@ def main():
             # token无效则重新登录+获取门店
             if not valid:
                 print("重新获取token")
-                wx = get_code(aid)
+                wx = get_code(account)
                 if not wx:
                     print("未注册小程序，跳过")
                     continue
