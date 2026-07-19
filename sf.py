@@ -1,40 +1,100 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+# name: 顺丰速运自动任务
+# cron: 0 9 * * *
 """
-顺丰速运自动任务 v1.4.1
+顺丰速运自动任务 动态 code 版 (YYB_SERVER 适配版)
 
-功能：自动执行顺丰速运日常积分任务、会员日活动，支持多账号执行，执行结束后统一推送。
+功能：
+  1. 通过 YYB_SERVER 取码服务获取微信 code
+  2. UCMP 换取顺丰 Cookie
+  3. 每日签到 + 做任务 + 领积分
+  4. 会员日活动（每月26-28号自动抽奖）
+  5. 自动适配青龙通知渠道（SendNotify / QYWX_KEY）
+  6. 品赞代理，业务请求优先代理，失败直连兆底
+  7. 世界杯金豆兑奖（可开关）
 
-配置说明：
-1. 微信 code 网关：
-   wechat_server 或 WECHAT_SERVER              必填其一，自建授权服务器域名
-   - 示例：http://127.0.0.1:8000
-   - 脚本会自动拼接 /wxapp/getCode
-   - 请求格式：POST {网关}/wxapp/getCode
-   - 请求体：{"app_id": "wxd4185d00bf7e08ac", "ref": "账号openid"}
+环境变量：
+  YYB_SERVER        取码服务地址，多账号每行一个，格式：地址@微信账号标识
+  PLUSPLUS_TOKEN    PushPlus token，可选
+  PROXY_API         品赞代理提取 API，可选
+  PROXY_TYPE        http / socks5，默认 http
 
-2. 账号变量：
-   sfwx_openid 或 SFWX_OPENID                 推荐，顺丰速运专属账号变量
-   - 多账号支持使用 &、英文逗号、中文逗号或换行分隔
-   - 示例：openid_a&openid_b 或 openid_a,openid_b
-   - 兼容旧变量 sfsyUrl；如配置 sfsyUrl，则可直接使用已有 Cookie/链接凭证
-
-3. 推送变量：
-   需要同目录存在 SendNotify.py，脚本结束后会统一调用 send_push_notification。
-   常用推送变量如下，配置任意一种即可：
-   QYWX_KEY                                         企业微信机器人 key
-   PUSH_PLUS_TOKEN                                  PushPlus token
-   PUSH_KEY                                         Server 酱 key
-   DD_BOT_TOKEN 或 DD_BOT_SECRET                    钉钉机器人 token/secret
-   FSKEY                                            飞书机器人 key
-
-4. 青龙任务建议：
-   名称：顺丰速运自动任务
-   命令：python3 顺丰.py
-   定时：每天运行 1 次即可，具体时间自行调整
+依赖：
+  pip install requests
+  socks5 代理需：
+  pip install requests[socks]
 """
 
-# cron: 8 6 * * *
+# === YYB_SERVER 统一通知注入 begin ===
+import os as __os, sys as __sys, io as __io, atexit as __atexit, re as __re
+_yyh_logs = []
+class __LogHook(__io.TextIOBase):
+    def __init__(self, s): self._s = s
+    def write(self, s):
+        if s and s != '\n': _yyh_logs.append(s.rstrip('\n'))
+        self._s.write(s); return len(s)
+    def flush(self): self._s.flush()
+    def isatty(self): return self._s.isatty()
+if not isinstance(__sys.stdout, __LogHook): __sys.stdout = __LogHook(__sys.stdout)
+if not isinstance(__sys.stderr, __LogHook): __sys.stderr = __LogHook(__sys.stderr)
+
+__pushed = False
+def __push():
+    global __pushed
+    if __pushed: return
+    try:
+        body = '\n'.join(_yyh_logs[-40:])
+        title = __os.path.basename(__sys.argv[0]) if __sys.argv else 'YYB_SERVER'
+        sn = None
+        try:
+            from sendNotify import sendNotify as _sn
+            sn = _sn
+        except Exception:
+            sn = None
+        if sn and callable(sn):
+            try: sn(title, body); return
+            except Exception: pass
+        key = __resolve_key()
+        if key:
+            import json as __json, urllib.request as __ur
+            data = __json.dumps({'msgtype':'text','text':{'content':f'【{title}】\n{body}'}}).encode('utf-8')
+            req = __ur.Request(f'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={key}', data=data, headers={'Content-Type':'application/json'})
+            __ur.urlopen(req, timeout=15)
+    except Exception:
+        pass
+    __pushed = True
+
+def __resolve_key():
+    k = __os.environ.get('QYWX_KEY') or __os.environ.get('QYWX') or __os.environ.get('WEWORK_KEY')
+    if k: return k
+    for cand in ('sendNotify.js', '/ql/data/scripts/sendNotify.js'):
+        try:
+            t = open(cand, encoding='utf-8').read()
+            m = __re.search(r"QYWX_KEY\s*=\s*'([^']+)'", t)
+            if not m:
+                m = __re.search(r'QYWX_KEY\s*=\s*"([^"]+)"', t)
+            if m: return m.group(1)
+        except Exception:
+            pass
+    return None
+
+__orig_os_exit = __os._exit
+def __patched_os_exit(code=0):
+    global __pushed
+    if __pushed:
+        return __orig_os_exit(code)
+    __pushed = True
+    try: __push()
+    except Exception: pass
+    return __orig_os_exit(code)
+try: __os._exit = __patched_os_exit
+except Exception: pass
+
+__atexit.register(__push)
+# === YYB_SERVER 统一通知注入 end ===
+
 import hashlib
 import json
 import os
@@ -51,33 +111,166 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-PUSH_SWITCH = os.getenv("SFSY_PUSH", "1")
 SCRIPT_TITLE = "🔔 顺丰速运任务执行总结"
 
-try:
-    from SendNotify import send_push_notification
-except Exception as exc:
-    print(f"[警告] 导入 SendNotify.py 失败：{exc}，将退化为控制台打印")
-    def send_push_notification(text, desp):
-        pass
 
 # ==================== 配置区域 ====================
 ENABLE_DAILY_TASK = True         # 日常积分任务 (签到+做任务+领积分)
 ENABLE_MEMBER_DAY = True         # 会员日活动 (每月26-28号自动执行)
-CONCURRENT_NUM = 1               # 并发数量 (1~20)
+
+ENABLE_WORLD_CUP_EXCHANGE = True    # 世界杯金豆兑奖 (关闭设为 False)
+MASK_PRIVACY = True           # 发帖隐私脱敏（手机号、IP等自动打码）
+
+# ===== 世界杯兑奖配置 =====
+EXCHANGE_ADDRESS_INDEX = 0
+
+# ===== 世界杯兑奖 - 账号兑换开关 =====
+# 控制哪些 code 服务地址（账号）执行兑换，不在列表里的默认执行
+# 设 True = 兑换，设 False = 不兑换
+# 青龙面板可用环境变量覆盖，如 EXCHANGE_127=False
+EXCHANGE_ACCOUNTS = {
+    '127.0.0.1:8088': False,
+    '192.168.31.36:8088': False,
+    '192.168.31.88:8088': False,
+    '192.168.31.62:8088': False,
+}
+
+# 环境变量覆盖示例：EXCHANGE_127=False → 关闭 127.0.0.1 的兑换
+def _load_exchange_accounts_env():
+    for key in list(EXCHANGE_ACCOUNTS.keys()):
+        env_key = 'EXCHANGE_' + key.split(':')[0].replace('.', '_')
+        env_val = os.environ.get(env_key, '').strip().lower()
+        if env_val:
+            EXCHANGE_ACCOUNTS[key] = env_val not in ('false', '0', 'off', 'no')
+_load_exchange_accounts_env()
+
+# ===== 世界杯兑奖 - 兑换内容开关 =====
+# 每个兑换项独立控制，想兑换就设 True，不想就设 False
+# 青龙面板可用同名环境变量覆盖，如 EXCHANGE_5YUAN=False
+EXCHANGE_DAJIA = False       # 大疆云台相机 (4000金豆)
+EXCHANGE_HUANGJIN = False    # 黄金足球金币 (3000金豆)
+EXCHANGE_ZAYU = False        # 世界杯吉祥物ZAYU (1500金豆)
+EXCHANGE_YUSAN = False       # 顺丰定制雨伞 (1000金豆)
+EXCHANGE_HUANBAODAI = False  # 顺丰定制环保袋 (800金豆)
+EXCHANGE_JINTIE = False      # 顺丰黄金金贴 (800金豆)
+EXCHANGE_23YUAN = True       # 23元免单券 (800金豆)
+EXCHANGE_12YUAN = True       # 12元寄件券 (400金豆)
+EXCHANGE_5YUAN = True        # 5元寄件券 (200金豆)
+
+# 环境变量覆盖（青龙面板用）
+EXCHANGE_DAJIA = os.environ.get('EXCHANGE_DAJIA', str(EXCHANGE_DAJIA)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_HUANGJIN = os.environ.get('EXCHANGE_HUANGJIN', str(EXCHANGE_HUANGJIN)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_ZAYU = os.environ.get('EXCHANGE_ZAYU', str(EXCHANGE_ZAYU)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_YUSAN = os.environ.get('EXCHANGE_YUSAN', str(EXCHANGE_YUSAN)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_HUANBAODAI = os.environ.get('EXCHANGE_HUANBAODAI', str(EXCHANGE_HUANBAODAI)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_JINTIE = os.environ.get('EXCHANGE_JINTIE', str(EXCHANGE_JINTIE)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_23YUAN = os.environ.get('EXCHANGE_23YUAN', str(EXCHANGE_23YUAN)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_12YUAN = os.environ.get('EXCHANGE_12YUAN', str(EXCHANGE_12YUAN)).strip().lower() not in ('false', '0', 'off', 'no')
+EXCHANGE_5YUAN = os.environ.get('EXCHANGE_5YUAN', str(EXCHANGE_5YUAN)).strip().lower() not in ('false', '0', 'off', 'no')
+
+EXCHANGE_ITEMS = {
+    '大疆云台相机': {
+        'enabled': EXCHANGE_DAJIA,
+        'shouldNum': 4000,
+        'ruleCode': 'RC2071521968535695360',
+        'giftPoolCode': 'RGP2071522071354847232',
+        'giftBagCode': 'GB2072258393963130880',
+        'limitLotteryNum': 1,
+    },
+    '黄金足球金币': {
+        'enabled': EXCHANGE_HUANGJIN,
+        'shouldNum': 3000,
+        'ruleCode': 'RC2070401398901387264',
+        'giftPoolCode': 'RGP2070401639801192448',
+        'giftBagCode': 'GB2070345977872318464',
+        'limitLotteryNum': 1,
+    },
+    '世界杯吉祥物ZAYU': {
+        'enabled': EXCHANGE_ZAYU,
+        'shouldNum': 1500,
+        'ruleCode': 'RC2071545327583535104',
+        'giftPoolCode': 'RGP2071545403261366272',
+        'giftBagCode': 'GB2070342899488038912',
+        'limitLotteryNum': 1,
+    },
+    '顺丰定制雨伞': {
+        'enabled': EXCHANGE_YUSAN,
+        'shouldNum': 1000,
+        'ruleCode': 'RC2071522391409635328',
+        'giftPoolCode': 'RGP2071522423131078656',
+        'giftBagCode': 'GB2072281755598860288',
+        'limitLotteryNum': 1,
+    },
+    '顺丰定制环保袋': {
+        'enabled': EXCHANGE_HUANBAODAI,
+        'shouldNum': 800,
+        'ruleCode': 'RC2071523194698530816',
+        'giftPoolCode': 'RGP2071523233667821568',
+        'giftBagCode': 'GB2070342191682482176',
+        'limitLotteryNum': 1,
+    },
+    '顺丰黄金金贴': {
+        'enabled': EXCHANGE_JINTIE,
+        'shouldNum': 800,
+        'ruleCode': 'RC2071524307690606592',
+        'giftPoolCode': 'RGP2071524350397050880',
+        'giftBagCode': 'GB2072277419896434688',
+        'limitLotteryNum': 1,
+    },
+    '23元免单券': {
+        'enabled': EXCHANGE_23YUAN,
+        'shouldNum': 800,
+        'ruleCode': 'RC2070398330633777152',
+        'giftPoolCode': 'RGP2070398549895229440',
+        'giftBagCode': 'GB2000483494626267136',
+        'limitLotteryNum': 2,
+    },
+    '12元寄件券': {
+        'enabled': EXCHANGE_12YUAN,
+        'shouldNum': 400,
+        'ruleCode': 'RC2070399299203448832',
+        'giftPoolCode': 'RGP2070399485015261184',
+        'giftBagCode': 'GB2070346620188012544',
+        'limitLotteryNum': 5,
+    },
+    '5元寄件券': {
+        'enabled': EXCHANGE_5YUAN,
+        'shouldNum': 200,
+        'ruleCode': 'RC2071525126427197440',
+        'giftPoolCode': 'RGP2071525224414441472',
+        'giftBagCode': 'GB2062025763973922816',
+        'limitLotteryNum': 12,
+    },
+}
+
+EXCLUDE_PHONES = set()
+PHONE_OVERRIDE = {}
+
 
 TOKEN = 'wwesldfs29aniversaryvdld29'
-inviteId = []
 SYS_CODE = 'MCS-MIMP-CORE'
 
-# 统一变量名称与默认端口映射
-SF_WX_SERVER = (os.environ.get("wechat_server") or os.environ.get("WECHAT_SERVER") or "").strip().rstrip("/")
 SF_WX_APPID = os.getenv("SF_WX_APPID", "wxd4185d00bf7e08ac")       # 小程序 appid
 SF_PUBLIC_ID = os.getenv("SF_PUBLIC_ID", "gh_f9d9fca26a50")        # 小程序原始ID
 SF_OAUTH_APPID = os.getenv("SF_OAUTH_APPID", "wx0d9aa0e894066e87") # 公众号 appid
 SF_OAUTH_SCENE = os.getenv("SF_OAUTH_SCENE", "692")                # 活动场景号
-SF_AUTO_COOKIE = os.getenv("SF_AUTO_COOKIE", "1") == "1"           # 自动获取Cookie开关
-SFWX_OPENIDS = os.environ.get("sfwx_openid") or os.environ.get("SFWX_OPENID") or "" # 顺丰专属 openid
+
+# Code 服务地址列表（支持多个，用 & , 或换行分隔）
+# 格式：http://ip:port（脚本自动拼接 /login?appId=xxx）
+# 多账号示例: http://10.30.9.49:8088&http://10.30.9.50:8088
+# YYB_SERVER 适配：每行一个，格式 地址@微信账号标识
+SF_CODE_SERVERS = []
+_YYB_SERVER_RAW = os.getenv("YYB_SERVER", "").strip()
+if _YYB_SERVER_RAW:
+    SF_CODE_SERVERS = [line.strip() for line in _YYB_SERVER_RAW.splitlines() if line.strip()]
+else:
+    SF_CODE_SERVERS = [
+        '127.0.0.1:8088',
+        '192.168.31.36:8088',
+        '192.168.31.88:8088',
+        '192.168.31.62:8088',
+    ]
+SF_CODE_SERVERS_RAW = os.environ.get('SF_CODE_SERVERS') or os.environ.get('sf_code_servers') or '&'.join(SF_CODE_SERVERS)
 
 DAILY_SKIP_TASKS = [
     '用行业模板寄件下单', '用积分兑任意礼品', '参与积分活动',
@@ -96,18 +289,41 @@ MEMBER_DAY_SKIP_TASK_TYPES = [
     'INTEGRAL_EXCHANGE',
 ]
 
-PROXY_API_URL = os.getenv("SF_PROXY_API_URL", "")
-PROXY_TYPE = os.getenv("SF_PROXY_TYPE", "socks5")
-PROXY_TIMEOUT = 15
-MAX_PROXY_RETRIES = 5
-REQUEST_COUNT = 3
-PROXY_RETRY_DELAY = 2
+PLUSPLUS_TOKEN = os.getenv('PLUSPLUS_TOKEN', '')
+PROXY_API = os.getenv('PROXY_API', '')
+PROXY_TYPE = os.getenv('PROXY_TYPE', 'http').lower()
+PROXY_RETRY_TIMES = 3
+PROXY_VALIDATE_URL = 'http://httpbin.org/ip'
+PROXY_FETCH_INTERVAL = 3
+ENABLE_DIRECT_FALLBACK = True
+REQUEST_TIMEOUT = 30
 PROXY_CONTEXT = {'last_fetch_ts': 0}
 PROXY_LOCK = Lock()
 print_lock = Lock()
 GLOBAL_NOTIFY_BUFFERS: List[Dict[str, Any]] = []
 AUTO_COOKIE_INDEX_BY_VALUE: Dict[str, int] = {}
+COOKIE_TO_SERVER: Dict[str, str] = {}  # cookie -> code server address
+# 兑奖项由 EXCHANGE_xxx 开关控制
 
+
+def now_text() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def log_title() -> None:
+    print()
+    print("╔" + "═" * 50 + "╗")
+    print("\u2551 🚚 顺丰速运自动任务 动\u6001 code 版               \u2551")
+    print(f"\u2551 🕒 启动时间: {now_text():<32}\u2551")
+    print("╚" + "═" * 50 + "╝")
+
+
+def log_account_header(index: int, total: int, server: str) -> None:
+    print()
+    print("┌" + "─" * 50 + "┐")
+    print(f"\u2502 🧩 账号 {index} / {total:<37}\u2502")
+    print(f"\u2502 🌍 来源 {_mask_ip(server):<40}\u2502")
+    print("└" + "─" * 50 + "┘")
 
 class Logger:
     def __init__(self):
@@ -150,200 +366,304 @@ def mask_account(value: Any) -> str:
     return f"{value[:6]}...{value[-4:]}"
 
 
-def _build_proxy_url(ip: str, port: int, username: str = "", password: str = "") -> str:
-    if username and password:
-        safe_user = url_encode(username, safe='')
-        safe_pass = url_encode(password, safe='')
-        return f"{PROXY_TYPE}://{safe_user}:{safe_pass}@{ip}:{port}"
-    return f"{PROXY_TYPE}://{ip}:{port}"
+
+def _mask_phone(phone: str) -> str:
+    """隐私脱敏：手机号中间4位打码"""
+    if not MASK_PRIVACY:
+        return phone
+    p = str(phone).strip()
+    if len(p) == 11 and p.isdigit():
+        return p[:3] + "****" + p[7:]
+    return p[:2] + "****" + p[-2:] if len(p) > 4 else p
+
+def _mask_ip(ip_str: str) -> str:
+    """隐私脱敏：IP地址部分打码"""
+    if not MASK_PRIVACY:
+        return ip_str
+    # Mask private/local IPs: 192.168.x.x, 10.x.x.x, 127.x.x.x
+    if ip_str.startswith(("192.168.", "10.", "127.")):
+        parts = ip_str.split(".")
+        if len(parts) == 4:
+            return f"{parts[0]}.{parts[1]}.*.*"
+    # Mask public proxy IPs: keep first octet only
+    parts = ip_str.split(":")
+    host = parts[0]
+    port = parts[1] if len(parts) > 1 else ""
+    octets = host.split(".")
+    if len(octets) == 4:
+        masked_host = f"{octets[0]}.*.*.{octets[3]}"
+        return f"{masked_host}:{port}" if port else masked_host
+    return ip_str
+def direct_session() -> requests.Session:
+    session = requests.Session()
+    session.trust_env = False
+    session.verify = False
+    return session
 
 
-def parse_proxy_response(text: str) -> Optional[Tuple[str, str]]:
+def parse_proxy_response_pz(text):
+    """Parse proxy response from Pizan API."""
+    if not isinstance(text, str):
+        text = json.dumps(text, ensure_ascii=False)
     text = text.strip()
+    if not text:
+        return None
     try:
         data = json.loads(text)
-        def extract(d: dict) -> Optional[Tuple[str, str]]:
-            if 'ip' not in d or 'port' not in d:
-                return None
-            ip, port = str(d['ip']), int(d['port'])
-            user = str(d.get('account', d.get('user', '')) or '')
-            pwd = str(d.get('password', d.get('pass', '')) or '')
-            url = _build_proxy_url(ip, port, user, pwd)
-            display = f"{ip}:{port}" + (" (认证)" if user else "")
-            return url, display
-        if isinstance(data, dict):
-            if 'ip' in data and 'port' in data:
-                return extract(data)
-            if 'data' in data:
-                pd = data['data']
-                if isinstance(pd, dict) and 'list' in pd:
-                    pl = pd['list']
-                    if isinstance(pl, list) and pl:
-                        return extract(pl[0])
-                if isinstance(pd, list) and pd:
-                    return extract(pd[0])
-                if isinstance(pd, dict) and 'ip' in pd:
-                    return extract(pd)
-            if 'result' in data:
-                r = data['result']
-                if isinstance(r, dict) and 'ip' in r:
-                    return extract(r)
-    except (json.JSONDecodeError, ValueError):
+        proxy_obj = None
+        if isinstance(data.get("data"), list) and data["data"]:
+            proxy_obj = data["data"][0]
+        elif isinstance(data.get("data"), dict):
+            proxy_obj = data["data"]
+        elif data.get("ip") and data.get("port"):
+            proxy_obj = data
+        elif isinstance(data.get("result"), dict):
+            proxy_obj = data["result"]
+        if proxy_obj:
+            host = proxy_obj.get("ip") or proxy_obj.get("host")
+            port = proxy_obj.get("port")
+            if host and port:
+                return {
+                    "host": str(host),
+                    "port": int(port),
+                    "username": proxy_obj.get("user") or proxy_obj.get("username") or "",
+                    "password": proxy_obj.get("pass") or proxy_obj.get("password") or "",
+                }
+    except Exception:
         pass
-    if ':' in text:
-        segments = text.split()
-        addr_parts = segments[0].split(':')
-        if len(addr_parts) == 2 and addr_parts[1].isdigit():
-            ip, port = addr_parts[0], int(addr_parts[1])
-            user = segments[1] if len(segments) > 1 else ""
-            pwd = segments[2] if len(segments) > 2 else ""
-            url = _build_proxy_url(ip, port, user, pwd)
-            display = f"{ip}:{port}" + (" (认证)" if user else "")
-            return url, display
+    if ":" in text:
+        parts = text.split(":")
+        if len(parts) >= 2:
+            try:
+                return {
+                    "host": parts[0],
+                    "port": int(parts[1]),
+                    "username": parts[2] if len(parts) > 2 else "",
+                    "password": parts[3] if len(parts) > 3 else "",
+                }
+            except (ValueError, IndexError):
+                pass
     return None
 
 
-def get_api_proxy() -> Optional[Tuple[Dict[str, str], str]]:
-    if not PROXY_API_URL:
+def build_proxy_dict_pz(proxy_info):
+    """Build requests-compatible proxy dict from parsed proxy info."""
+    if not proxy_info:
         return None
-    with PROXY_LOCK:
-        elapsed = time.time() - PROXY_CONTEXT['last_fetch_ts']
-        if elapsed < 3:
-            time.sleep(3 - elapsed)
-        for i in range(MAX_PROXY_RETRIES):
+    host = proxy_info["host"]
+    port = proxy_info["port"]
+    username = proxy_info.get("username", "")
+    password = proxy_info.get("password", "")
+    auth = ""
+    if username and password:
+        auth = f"{url_encode(username)}:{url_encode(password)}@"
+    scheme = "socks5" if PROXY_TYPE == "socks5" else "http"
+    proxy_url = f"{scheme}://{auth}{host}:{port}"
+    _log_global(f"🛠️ [代理] 生成 {scheme.upper()} 代理 {host}:{port}")
+    return {"http": proxy_url, "https": proxy_url}
+
+
+def validate_proxy_pz(proxies):
+    """Validate proxy by requesting httpbin.org/ip."""
+    if not proxies:
+        return False, ""
+    try:
+        response = requests.get(PROXY_VALIDATE_URL, proxies=proxies, timeout=15, verify=False)
+        if response.status_code == 200:
             try:
-                resp = requests.get(PROXY_API_URL, timeout=10)
-                if resp.status_code == 200:
-                    result = parse_proxy_response(resp.text)
-                    if result:
-                        proxy_url, display = result
-                        PROXY_CONTEXT['last_fetch_ts'] = time.time()
-                        _log_global(f"✅ 代理获取成功: {display}")
-                        return {'http': proxy_url, 'https': proxy_url}, display
-                _log_global(f"⚠️ 第{i+1}次代理格式无效")
-            except Exception as e:
-                _log_global(f"⚠️ 第{i+1}次获取代理异常: {str(e)[:80]}")
-            if i < MAX_PROXY_RETRIES - 1:
-                time.sleep(PROXY_RETRY_DELAY)
-        PROXY_CONTEXT['last_fetch_ts'] = time.time()
-        _log_global(f"❌ 代理获取失败：已重试{MAX_PROXY_RETRIES}次")
-        return None
+                ip = response.json().get("origin", "未知")
+            except Exception:
+                ip = "未知"
+            _log_global(f"✅ [代理] 验证通过，出口 IP: {_mask_ip(ip)}")
+            return True, ip
+    except Exception as exc:
+        _log_global(f"⚠️ [代理] 验证失败: {exc}")
+    return False, ""
 
 
-def parse_fixed_proxy(fixed_proxy: str) -> Optional[Dict[str, str]]:
-    if not fixed_proxy:
-        return None
-    if '://' not in fixed_proxy:
-        fixed_proxy = f'{PROXY_TYPE}://{fixed_proxy}'
-    return {'http': fixed_proxy, 'https': fixed_proxy}
+def get_valid_proxy_pz(account_name: str):
+    """Get a validated proxy from Pizan API, with retry and fallback to direct."""
+    if not PROXY_API:
+        _log_global(f"⚠️ [代理] {account_name} 未配置 PROXY_API，使用直连")
+        return None, ""
+    _log_global(f"🌐 [代理] {account_name} 正在获取品赞代理...")
+    for index in range(1, PROXY_RETRY_TIMES + 1):
+        try:
+            response = direct_session().get(PROXY_API, timeout=15)
+            proxy_info = parse_proxy_response_pz(response.text)
+            if not proxy_info:
+                _log_global(f"⚠️ [代理] 第 {index} 次代理解析失败")
+                continue
+            _log_global(f"✅ [代理] 提取到 {_mask_ip(proxy_info['host'])}:{proxy_info['port']}")
+            proxies = build_proxy_dict_pz(proxy_info)
+            ok, ip = validate_proxy_pz(proxies)
+            if ok:
+                return proxies, ip
+            _log_global(f"⚠️ [代理] 第 {index} 次代理不可用")
+        except Exception as exc:
+            _log_global(f"⚠️ [代理] 第 {index} 次获取代理异常: {exc}")
+        if index < PROXY_RETRY_TIMES:
+            time.sleep(2)
+    _log_global("⚠️ [代理] 获取失败，使用直连")
+    return None, ""
 
+
+def request_with_proxy(
+    method: str,
+    url: str,
+    *,
+    proxies=None,
+    server: str = "",
+    **kwargs,
+):
+    """Make request with proxy, fallback to direct on failure."""
+    kwargs.setdefault("timeout", REQUEST_TIMEOUT)
+    kwargs.setdefault("verify", False)
+    if proxies:
+        try:
+            return requests.request(method, url, proxies=proxies, **kwargs)
+        except Exception as exc:
+            _log_global(f"⚠️ [代理] {server} 代理请求失败: {exc}")
+            if not ENABLE_DIRECT_FALLBACK:
+                raise
+            _log_global("🔁 [兜底] 切换直连重试")
+    session = direct_session()
+    return session.request(method, url, **kwargs)
+
+
+def send_pushplus(title: str, content: str) -> None:
+    """Send push notification via PushPlus."""
+    if not PLUSPLUS_TOKEN:
+        _log_global("⚠️ [PushPlus] 未配置 PLUSPLUS_TOKEN，跳过推送")
+        return
+    try:
+        requests.post(
+            "https://www.pushplus.plus/send",
+            json={
+                "token": PLUSPLUS_TOKEN,
+                "title": title,
+                "content": content,
+                "template": "txt",
+            },
+            timeout=10,
+        )
+        _log_global("✅ [PushPlus] 推送成功")
+    except Exception as exc:
+        _log_global(f"❌ [PushPlus] 推送失败: {exc}")
 
 # ==================== AutoCookieManager ====================
 UCMP_BASE = "https://ucmp.sf-express.com"
 
 class AutoCookieManager:
     def __init__(self, wx_server: str = None):
-        self.wx_server = (wx_server or SF_WX_SERVER).strip().rstrip("/")
+        self.wx_server = (wx_server or "").strip().rstrip("/")
         self.session = requests.Session()
         self.session.verify = False
     
-    def _get_online_accounts(self) -> List[Dict]:
-        if not self.wx_server:
-            _log_global("❌ 未配置 wechat_server 或 WECHAT_SERVER，无法获取在线账号")
-            return []
-        try:
-            r = self.session.get(f"{self.wx_server}/api/v1/wx/user/status", timeout=10)
-            j = r.json()
-            data = j.get("Data") or j.get("data") or {}
-            accounts = []
-            for k, v in data.items():
-                if isinstance(v, dict) and v.get("wxid") and v.get("survival") == 1:
-                    accounts.append(v)
-            return accounts
-        except Exception as e:
-            _log_global(f"❌ 获取在线账号失败: {e}")
-            return []
-    
-    def _get_wx_code(self, wxid: str, appid: str = None, max_retries: int = 3) -> Optional[str]:
-        """通过 POST /wxapp/getCode 获取微信 code
+    def _get_wx_code(self, server: str = None, appid: str = None, max_retries: int = 3) -> Optional[str]:
+        """通过 YYB_SERVER 取码服务获取微信 code
 
-        请求体: {"app_id": appid, "ref": wxid/openid}
-        成功响应: {"code":0,"msg":"success","data":{"openid":"...","result":{"code":"...","errMsg":"login:ok"}}}
+        请求: POST {server}/wxapp/getCode (ref + app_id)
+        兼容旧本地: GET {server}/login?appId={appid}
+        成功响应: {"err":0,"msg":"success","code":"xxx"} 或 YYB Go 格式
         """
-        if not self.wx_server:
-            _log_global("❌ 未配置 wechat_server 或 WECHAT_SERVER，无法请求 /wxapp/getCode")
+        code_server = (server or self.wx_server).strip().rstrip("/")
+        if not code_server:
+            _log_global("❌ 未配置 code 服务地址，无法获取 code")
             return None
         target_appid = appid or SF_WX_APPID
-        url = f"{self.wx_server}/wxapp/getCode"
+
+        # 解析 YYB_SERVER 格式：地址@ref
+        at = code_server.rfind("@")
+        ref = ""
+        if at != -1:
+            ref = code_server[at + 1:].strip()
+            code_server = code_server[:at].strip()
+
+        # 优先 YYB Go 取码
+        if ref:
+            url = f"http://{code_server}/wxapp/getCode"
+            for attempt in range(max_retries):
+                try:
+                    r = self.session.post(url, json={"ref": ref, "app_id": target_appid}, timeout=30)
+                    j = r.json()
+                    code = j.get("data", {}).get("result", {}).get("code")
+                    if j.get("code") == 0 and code:
+                        _log_global(f"✅ YYB Go code 获取成功 appid={target_appid}")
+                        return str(code)
+                    if attempt < max_retries - 1:
+                        wait = (attempt + 1) * 3
+                        _log_global(f"⚠️ code为空，{wait}s后重试({attempt+1}/{max_retries}) resp={str(j)[:160]}")
+                        time.sleep(wait)
+                        continue
+                    _log_global(f"❌ 获取code失败 appid={target_appid} resp={str(j)[:160]}")
+                    return None
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        wait = (attempt + 1) * 3
+                        _log_global(f"⚠️ code异常 {str(e)[:60]}，{wait}s后重试({attempt+1}/{max_retries})")
+                        time.sleep(wait)
+                        continue
+                    _log_global(f"❌ 获取code异常 appid={target_appid} err={str(e)[:80]}")
+                    return None
+            return None
+
+        # 兼容旧本地 /login 接口
+        url = f"{code_server}/login"
+        if not code_server.startswith("http"):
+            url = f"http://{code_server}/login"
 
         for attempt in range(max_retries):
             try:
-                payload = {"app_id": target_appid, "ref": wxid}
-                headers = {
-                    "Content-Type": "application/json",
-                    "User-Agent": "Mozilla/5.0 MicroMessenger/8.0.50",
-                }
-
-                r = self.session.post(url, json=payload, headers=headers, timeout=30)
+                r = self.session.get(url, params={"appId": target_appid}, timeout=30)
                 j = r.json()
 
-                # 新接口: code==0 且 data.result.code 为微信 code
+                # 兼容铛铛一下接口格式: {"err":0,"code":"xxx"}
+                if j.get("err") == 0 and j.get("code"):
+                    _log_global(f"✅ code 获取成功 appid={target_appid}")
+                    return str(j["code"])
+
+                # 兼容旧 POST 接口格式
                 if j.get("code") == 0:
                     data = j.get("data") or {}
                     result = data.get("result") if isinstance(data, dict) else {}
                     if isinstance(result, dict) and result.get("code"):
                         return str(result["code"])
-                    if isinstance(data, dict):
-                        nested_code = data.get("code")
-                        if nested_code not in (None, "", 0):
-                            return str(nested_code)
 
-                # 兼容旧结构
-                if j.get("status") == "ok" and j.get("code") and not isinstance(j.get("code"), int):
-                    return str(j["code"])
-
-                data = j.get("Data") or j.get("data") or {}
-                code = ""
-                if isinstance(data, dict):
-                    result = data.get("result") or {}
-                    if isinstance(result, dict):
-                        code = result.get("code") or ""
-                    if not code:
-                        nested_code = data.get("code")
-                        if nested_code not in (None, "", 0):
-                            code = nested_code
-                if not code:
-                    code = j.get("wx_code") or ""
-
-                if not code:
-                    if attempt < max_retries - 1:
-                        wait = (attempt + 1) * 3
-                        _log_global(f"⚠️ {wxid[:12]}***: code为空，{wait}s后重试({attempt+1}/{max_retries})")
-                        time.sleep(wait)
-                        continue
-                    _log_global(f"❌ {wxid[:12]}***: 获取code失败 appid={target_appid} resp={str(j)[:160]}")
-                    return None
-                return str(code)
+                if attempt < max_retries - 1:
+                    wait = (attempt + 1) * 3
+                    _log_global(f"⚠️ code为空，{wait}s后重试({attempt+1}/{max_retries}) resp={str(j)[:160]}")
+                    time.sleep(wait)
+                    continue
+                _log_global(f"❌ 获取code失败 appid={target_appid} resp={str(j)[:160]}")
+                return None
             except Exception as e:
                 if attempt < max_retries - 1:
                     wait = (attempt + 1) * 3
-                    _log_global(f"⚠️ {wxid[:12]}***: code异常 {str(e)[:60]}，{wait}s后重试({attempt+1}/{max_retries})")
+                    _log_global(f"⚠️ code异常 {str(e)[:60]}，{wait}s后重试({attempt+1}/{max_retries})")
                     time.sleep(wait)
                     continue
-                _log_global(f"❌ {wxid[:12]}***: 获取code异常 appid={target_appid} err={str(e)[:80]}")
+                _log_global(f"❌ 获取code异常 appid={target_appid} err={str(e)[:80]}")
                 return None
-        return None
 
     def _ucmp_app_on_login(self, code: str) -> Optional[Dict]:
         try:
             url = f"{UCMP_BASE}/wxaccess/weixin/appOnLogin"
-            r = self.session.get(url, params={"code": code, "publicId": SF_PUBLIC_ID}, timeout=25)
-            j = r.json()
+            resp = request_with_proxy(
+                "GET", url,
+                params={"code": code, "publicId": SF_PUBLIC_ID},
+                proxies=self.session.proxies if self.session.proxies else None,
+                server="appOnLogin",
+                timeout=25,
+                cookies=self.session.cookies.get_dict(),
+            )
+            j = resp.json()
             if j.get("sessionId") and j.get("openid"):
                 return j
             return None
         except Exception:
             return None
+
 
     def _get_oauth_redirect_info(self, ucmp_sid: str) -> Tuple[Optional[str], Optional[str]]:
         try:
@@ -364,25 +684,25 @@ class AutoCookieManager:
             return redirect_uri, state
         except Exception: return None, None
     
-    def get_cookie_for_wxid(self, wxid: str) -> Optional[str]:
-        """通过 /wxapp/getCode 拿到 code 后，走 UCMP 换取顺丰 Cookie。
+    def get_cookie_for_wxid(self, server: str) -> Optional[str]:
+        """通过 GET /login?appId=xxx 拿到 code 后，走 UCMP 换取顺丰 Cookie。
 
         说明：
         - 旧版 OAuth 回调链路容易只拿到 sessionId，但 _login_mobile_ / _login_user_id_ 为空
         - 这里对齐 sfsy/sfkd 的 sfnewactivity 换绑流程，保证业务 Cookie 完整
         """
-        code = self._get_wx_code(wxid, SF_WX_APPID)
+        code = self._get_wx_code(server, SF_WX_APPID)
         if not code:
             return None
 
         ucmp = self._ucmp_app_on_login(code)
         if not ucmp:
-            _log_global(f"❌ {wxid[:10]}*** appOnLogin 失败")
+            _log_global(f"❌ {server} appOnLogin 失败")
             return None
 
         suuid = ucmp.get("sessionId", "")
         if not suuid:
-            _log_global(f"❌ {wxid[:10]}*** appOnLogin 未返回 sessionId")
+            _log_global(f"❌ {server} appOnLogin 未返回 sessionId")
             return None
 
         try:
@@ -463,7 +783,7 @@ class AutoCookieManager:
 
             if not session_id or not login_mobile or not login_user_id:
                 _log_global(
-                    f"❌ {wxid[:10]}*** Cookie 不完整 session={bool(session_id)} "
+                    f"❌ {server} Cookie 不完整 session={bool(session_id)} "
                     f"mobile={bool(login_mobile)} uid={bool(login_user_id)}"
                 )
                 return None
@@ -478,34 +798,33 @@ class AutoCookieManager:
                     parts.append(f"{k}={cookies[k]}")
 
             cookie_str = ";".join(parts)
-            _log_global(f"✅ {wxid[:10]}*** 自动获取凭证换绑成功 ➔ 手机: {login_mobile}")
+            _masked_phone = login_mobile[:3] + "****" + login_mobile[7:] if len(login_mobile) >= 7 else login_mobile
+            _log_global(f"✅ {_mask_ip(server)} 自动获取凭证换绑成功 ➔ 手机: {_masked_phone}")
             return cookie_str
         except Exception as e:
-            _log_global(f"❌ {wxid[:10]}*** 换取 Cookie 异常: {str(e)[:80]}")
+            _log_global(f"❌ {server} 换取 Cookie 异常: {str(e)[:80]}")
             return None
 
-    def get_cookies_for_wxids(self, wxids: List[str] = None) -> Dict[str, str]:
-        if not wxids:
-            accounts = self._get_online_accounts()
-            wxids = [a["wxid"] for a in accounts]
-        
+    def get_cookies_for_servers(self, servers: List[str] = None) -> Dict[str, str]:
+        """对每个 code 服务地址获取顺丰 Cookie。"""
+        if not servers:
+            servers = parse_env_accounts(SF_CODE_SERVERS_RAW)
         results = {}
-        for i, wxid in enumerate(wxids):
+        for i, server in enumerate(servers):
             try:
-                cookie = self.get_cookie_for_wxid(wxid)
-                if cookie: results[wxid] = cookie
+                cookie = self.get_cookie_for_wxid(server)
+                if cookie: results[server] = cookie
             except Exception: pass
-            if i < len(wxids) - 1: time.sleep(2)
+            if i < len(servers) - 1: time.sleep(2)
         return results
-
-
 # ==================== HTTP 客户端 ====================
 class SFHttpClient:
-    def __init__(self, fixed_proxy: str = ""):
+    def __init__(self, account_name: str = ""):
         self.session = requests.Session()
         self.session.verify = False
-        self.proxy_display = '无代理'
-        self._setup_proxy(fixed_proxy)
+        self.proxy_display = '直连'
+        self.session.proxies = {}
+        self._setup_proxy(account_name)
         self.headers = {
             'Host': 'mcs-mimp-web.sf-express.com',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254173b) XWEB/19027',
@@ -516,21 +835,27 @@ class SFHttpClient:
             'accept-language': 'zh-CN,zh;q=0.9',
         }
 
-    def _setup_proxy(self, fixed_proxy: str):
-        if fixed_proxy:
-            proxy_dict = parse_fixed_proxy(fixed_proxy)
-            if proxy_dict:
-                self.session.proxies = proxy_dict
-                display = fixed_proxy
-                if '@' in fixed_proxy:
-                    parts = fixed_proxy.split('@')
-                    display = f"***@{parts[-1]}"
-                self.proxy_display = display
-                return
-        result = get_api_proxy()
-        if result:
-            self.session.proxies = result[0]
-            self.proxy_display = result[1]
+    def _setup_proxy(self, account_name: str = ""):
+        proxies, proxy_ip = get_valid_proxy_pz(account_name)
+        if proxies:
+            self.session.proxies = proxies
+            self.proxy_display = proxy_ip or "代理"
+        else:
+            self.proxy_display = "直连"
+
+    def switch_to_app_mode(self):
+        self.headers.update({
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 mediaCode=SFEXPRESSAPP-iOS-ML',
+            'channel': '26sjbapp',
+            'platform': 'SFAPP',
+        })
+
+    def switch_to_xcx_mode(self):
+        self.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090a13) UnifiedPCWindowsWechat(0xf254173b) XWEB/19027',
+            'channel': 'xcxpart',
+            'platform': 'MINI_PROGRAM',
+        })
 
     def _generate_sign(self) -> Dict[str, str]:
         timestamp = str(int(round(time.time() * 1000)))
@@ -539,35 +864,28 @@ class SFHttpClient:
         return {'syscode': SYS_CODE, 'timestamp': timestamp, 'signature': signature}
 
     def request(self, url: str, data: Optional[Dict] = None, extra_headers: Optional[Dict[str, str]] = None) -> Optional[Dict]:
-        proxy_retry_count = 0
-        retry_count = 0
-        while proxy_retry_count < MAX_PROXY_RETRIES:
-            sign_data = self._generate_sign()
-            headers = {**self.headers, **sign_data}
-            if extra_headers: headers.update(extra_headers)
-            try:
-                resp = self.session.post(url, headers=headers, json=data or {}, timeout=PROXY_TIMEOUT)
-                resp.raise_for_status()
-                return resp.json()
-            except requests.exceptions.RequestException as e:
-                retry_count += 1
-                error_str = str(e)
-                if 'ProxyError' in error_str or 'SSLError' in error_str or 'ConnectionError' in error_str:
-                    proxy_retry_count += 1
-                    if proxy_retry_count < MAX_PROXY_RETRIES:
-                        result = get_api_proxy()
-                        if result:
-                            self.session.proxies = result[0]
-                            self.proxy_display = result[1]
-                        retry_count = 0
-                    time.sleep(2)
-                    continue
-                if retry_count < REQUEST_COUNT:
-                    time.sleep(2)
-                    continue
-                return None
-            except Exception: return None
-        return None
+        sign_data = self._generate_sign()
+        headers = {**self.headers, **sign_data}
+        if extra_headers:
+            headers.update(extra_headers)
+        try:
+            resp = request_with_proxy(
+                "POST", url,
+                headers=headers,
+                json=data or {},
+                proxies=self.session.proxies if self.session.proxies else None,
+                server=self.proxy_display,
+                timeout=REQUEST_TIMEOUT,
+                cookies=self.session.cookies.get_dict(),
+            )
+            resp.raise_for_status()
+            # Update session cookies from response
+            for name, value in resp.cookies.get_dict().items():
+                self.session.cookies.set(name, value)
+            return resp.json()
+        except Exception:
+            return None
+
 
     def login(self, url: str) -> Tuple[bool, str, str]:
         try:
@@ -585,7 +903,7 @@ class SFHttpClient:
                 phone = cookie_dict.get('_login_mobile_', '')
                 return (True, user_id, phone) if phone else (False, '', '')
             else:
-                self.session.get(decoded, headers=self.headers, timeout=PROXY_TIMEOUT)
+                self.session.get(decoded, headers=self.headers, timeout=REQUEST_TIMEOUT)
                 cookies = self.session.cookies.get_dict()
                 user_id = cookies.get('_login_user_id_', '')
                 phone = cookies.get('_login_mobile_', '')
@@ -890,13 +1208,187 @@ class MemberDayExecutor:
         return result
 
 
+
+# ==================== 世界杯兑奖执行器 ====================
+class ExchangeExecutor:
+    BASE_URL = 'https://mcs-mimp-web.sf-express.com/mcs-mimp'
+
+    def __init__(self, http: SFHttpClient, logger: Logger, phone: str, selected_items: Optional[set] = None):
+        self.http = http
+        self.logger = logger
+        self.phone = phone
+        # selected_items: 要兑换的奖品名称集合；None=用配置表里 enabled=True 的
+        self.selected_items = selected_items
+
+    def _post(self, path: str, data: Optional[Dict] = None) -> Optional[Dict]:
+        url = f'{self.BASE_URL}{path}'
+        return self.http.request(url, data=data or {})
+
+    # ===== 接口 =====
+
+    def get_prize_pool(self) -> Optional[List[Dict]]:
+        """获取奖池（含抽奖 LOTTERY 和兑换 EXCHANGE）"""
+        resp = self._post('/commonPost/~memberNonactivity~worldCupLotteryService~prizePool')
+        if resp and resp.get('success'):
+            return resp.get('obj', [])
+        return None
+
+    def prize_draw(self, rule_type: str, should_num: int, rule_code: str, gift_pool_code: str) -> Optional[Dict]:
+        """兑换/抽奖下单"""
+        data = {
+            "ruleType": rule_type,
+            "shouldNum": should_num,
+            "ruleCode": rule_code,
+            "giftPoolCode": gift_pool_code,
+        }
+        resp = self._post('/commonPost/~memberNonactivity~worldCupLotteryService~prizeDraw', data)
+        if resp and resp.get('success'):
+            return resp.get('obj', {})
+        err = resp.get('errorMessage', '未知错误') if resp else '请求失败'
+        self.logger.warning(f'兑换失败: {err}')
+        return None
+
+    def query_address_book(self) -> Optional[List[Dict]]:
+        """查询地址簿"""
+        resp = self._post('/commonPost/~memberActivity~addressBookService~queryAddressBook')
+        if resp and resp.get('success'):
+            obj = resp.get('obj', {})
+            return obj.get('result', [])
+        return None
+
+    def fill_receive_info(self, order_no: str, addr: Dict) -> bool:
+        """填写实物收货地址"""
+        data = {
+            "orderNo": order_no,
+            "receiver": addr.get("contactName", ""),
+            "receiverMobile": addr.get("contactTel", "") or addr.get("contactPhone", ""),
+            "addrDetail": addr.get("address", ""),
+            "provinceCode": addr.get("provinceCode", ""),
+            "provinceName": addr.get("province", ""),
+            "cityCode": addr.get("cityCode", ""),
+            "cityName": addr.get("city", ""),
+            "countyCode": addr.get("countyCode", ""),
+            "countyName": addr.get("county", ""),
+        }
+        resp = self._post('/commonPost/~activityCore~deliverOrderService~fillReceiveInfo', data)
+        return bool(resp and resp.get('success'))
+
+    # ===== 主流程 =====
+
+    def run(self) -> Dict[str, Any]:
+        result = {'exchange_items': [], 'failed_items': []}
+
+        # 先查一次奖池，获取已兑次数（lotteryNum）和库存状态
+        self.logger.info('查询兑奖奖池...')
+        pool = self.get_prize_pool()
+        if pool is None:
+            self.logger.error('获取奖池失败')
+            return result
+
+        # 从奖池中提取每项的已兑次数和售罄状态
+        pool_map = {}  # ruleCode -> {lotteryNum, soldOut, soldOutToday}
+        for item in pool:
+            if item.get('ruleType') == 'EXCHANGE':
+                pool_map[item.get('ruleCode', '')] = {
+                    'lotteryNum': item.get('lotteryNum', 0),
+                    'soldOut': item.get('soldOut', False),
+                    'soldOutToday': item.get('soldOutToday', False),
+                }
+
+        # 遍历配置表，根据 selected_items 或 enabled 决定兑换项
+        for name, cfg in EXCHANGE_ITEMS.items():
+            # 如果指定了 selected_items，用它判断；否则用配置表的 enabled
+            if self.selected_items is not None:
+                if name not in self.selected_items:
+                    continue
+            else:
+                if not cfg.get('enabled'):
+                    continue
+
+            rule_code = cfg['ruleCode']
+            should_num = cfg['shouldNum']
+            gift_pool_code = cfg['giftPoolCode']
+            limit = cfg.get('limitLotteryNum', 1)
+
+            # 检查奖池状态
+            pool_info = pool_map.get(rule_code, {})
+            already = pool_info.get('lotteryNum', 0)
+            sold_out = pool_info.get('soldOut', False)
+            sold_today = pool_info.get('soldOutToday', False)
+
+            if sold_out or sold_today:
+                self.logger.info(f'[{name}] 已售罄，跳过')
+                continue
+
+            remaining = limit - already
+            if remaining <= 0:
+                self.logger.info(f'[{name}] 已兑 {already}/{limit} 次，跳过')
+                continue
+
+            self.logger.task(f'[{name}] 兑换（{should_num}金豆/次，剩余 {remaining}/{limit} 次）')
+
+            # 按剩余次数循环兑换
+            for i in range(remaining):
+                draw_result = self.prize_draw('EXCHANGE', should_num, rule_code, gift_pool_code)
+                if draw_result is None:
+                    result['failed_items'].append({'name': name, 'reason': f'第{i+1}次兑换失败'})
+                    break
+
+                # 检查产品类型：SFM=实物, SFC=优惠券
+                product_list = draw_result.get('productDTOList', [])
+                order_no = ''
+                is_physical = False
+                product_names = []
+
+                for p in product_list:
+                    p_type = p.get('productType', '')
+                    p_name = p.get('productName', '?')
+                    product_names.append(p_name)
+                    if p_type == 'SFM':
+                        is_physical = True
+                        order_no = p.get('orderNo', '')
+
+                product_str = ', '.join(product_names) if product_names else name
+                self.logger.success(f'[{name}] 第{i+1}/{remaining}次 兑换成功: {product_str}')
+
+                if is_physical and order_no:
+                    # 实物 → 查地址簿并填地址
+                    self.logger.task(f'实物奖品，填写收货地址（订单 {order_no}）...')
+                    time.sleep(1)
+                    addr_book = self.query_address_book()
+                    if addr_book:
+                        idx = min(EXCHANGE_ADDRESS_INDEX, len(addr_book) - 1)
+                        addr = addr_book[idx]
+                        addr_str = f'{addr.get("contactName", "")} {_mask_phone(addr.get("contactTel", "")) or _mask_phone(addr.get("contactPhone", ""))} {addr.get("address", "")}'
+                        self.logger.info(f'使用地址: {addr_str}')
+                        if self.fill_receive_info(order_no, addr):
+                            self.logger.success('地址填写成功')
+                        else:
+                            self.logger.warning('地址填写失败，需手动填写')
+                    else:
+                        self.logger.warning(f'未获取到地址簿，需手动填写地址（订单 {order_no}）')
+                else:
+                    # 虚拟券
+                    self.logger.info('虚拟奖品（优惠券），无需填写地址')
+
+                result['exchange_items'].append({
+                    'name': product_str,
+                    'cost': should_num,
+                    'is_physical': is_physical,
+                    'order_no': order_no,
+                })
+
+                time.sleep(2)
+
+        return result
+
 # ==================== 核心处理器 ====================
 def run_account(account_raw: str, index: int) -> Dict[str, Any]:
     logger = Logger()
-    fixed_proxy = account_raw.split('#')[-1].strip() if '#' in account_raw else ""
+    # fixed_proxy removed, using pizan proxy instead
     account_url = account_raw.split('#')[0].strip() if '#' in account_raw else account_raw
     
-    http = SFHttpClient(fixed_proxy)
+    http = SFHttpClient(f'账号{index+1}')
     success, user_id, phone = http.login(account_url)
     if not success:
         return {'success': False, 'phone': '未登录账号'}
@@ -919,56 +1411,108 @@ def run_account(account_raw: str, index: int) -> Dict[str, Any]:
     if ENABLE_MEMBER_DAY and 26 <= datetime.now().day <= 28:
         md = MemberDayExecutor(http, logger, user_id)
         result['member_day_prizes'] = md.run().get('lottery_prizes', [])
-        
+
+    # ── 世界杯金豆兑奖 ──
+    _account_server = COOKIE_TO_SERVER.get(account_raw, '')
+    _account_exchange_enabled = EXCHANGE_ACCOUNTS.get(_account_server, EXCHANGE_ACCOUNTS.get(account_url, True))
+    if ENABLE_WORLD_CUP_EXCHANGE and not _account_exchange_enabled:
+        logger.info(f'\u3010{_mask_ip(_account_server or account_url)}\u3011\u5151\u6362\u5df2\u5173\u95ed\uff0c\u8df3\u8fc7')
+    elif ENABLE_WORLD_CUP_EXCHANGE and _account_exchange_enabled:
+        enabled_list = [k for k, v in EXCHANGE_ITEMS.items() if v.get('enabled')]
+        if enabled_list:
+            print(f"\u26bd \u4e16\u754c\u676f\u5151\u5956: {enabled_list}")
+        else:
+            print('\u26bd \u4e16\u754c\u676f\u5151\u5956: \u65e0\u5f00\u542f\u9879')
+        logger.task("开始执行世界杯金豆兑奖")
+        http.switch_to_app_mode()
+
+        real_phone = phone if phone and '*' not in phone else ''
+        if not real_phone:
+            try:
+                real_phone = http.session.cookies.get('_login_mobile_', '') or ''
+            except Exception:
+                pass
+
+        if real_phone in EXCLUDE_PHONES:
+            logger.info(f'【{_mask_phone(real_phone)}】在排除名单，跳过兑奖')
+            result['world_cup_exchange'] = {'exchange_items': [], 'failed_items': [], 'skipped': True}
+        else:
+            items_for_this_phone = None  # None=use EXCHANGE_ITEMS enabled config
+            if real_phone in PHONE_OVERRIDE:
+                items_for_this_phone = PHONE_OVERRIDE[real_phone]
+                logger.info(f'【{_mask_phone(real_phone)}】使用单独配置: {items_for_this_phone}')
+
+            executor = ExchangeExecutor(http, logger, real_phone, items_for_this_phone)
+            wc_result = executor.run()
+            result['world_cup_exchange'] = wc_result
+
+            ex_items = wc_result.get('exchange_items', [])
+            fail_items = wc_result.get('failed_items', [])
+            if ex_items:
+                for item in ex_items:
+                    tag = '实物' if item.get('is_physical') else '券'
+                    logger.success(f'兑奖成功: {item["name"]}({tag})')
+            if fail_items:
+                for item in fail_items:
+                    logger.warning(f'兑奖失败: {item["name"]} - {item.get("reason", "")}')
+
+        http.switch_to_xcx_mode()
+
     return result
 
 
 def _auto_fetch_cookies() -> List[str]:
-    mgr = AutoCookieManager()
-    wxids = parse_env_accounts(SFWX_OPENIDS) if SFWX_OPENIDS else [a["wxid"] for a in mgr._get_online_accounts()]
-    if not wxids:
+    """通过 SF_CODE_SERVERS 中的 code 服务地址获取多账号 Cookie。"""
+    servers = parse_env_accounts(SF_CODE_SERVERS_RAW)
+    if not servers:
+        _log_global("❌ SF_CODE_SERVERS 为空，无法获取 code")
         return []
 
-    _log_global(f"🔎 顺丰 sfwx_openid 解析到 {len(wxids)} 个账号")
+    mgr = AutoCookieManager()
+    _log_global(f"🔎 解析到 {len(servers)} 个 code 服务地址")
     cookies: List[str] = []
     AUTO_COOKIE_INDEX_BY_VALUE.clear()
+    COOKIE_TO_SERVER.clear()
 
-    for index, wxid in enumerate(wxids, 1):
+    for index, server in enumerate(servers, 1):
+        log_account_header(index, len(servers), server)
         try:
-            cookie = mgr.get_cookie_for_wxid(wxid)
+            cookie = mgr.get_cookie_for_wxid(server)
         except Exception as exc:
             cookie = None
-            _log_global(f"❌ 账号[{index}] {mask_account(wxid)} 自动换 Cookie 异常：{str(exc)[:80]}")
+            _log_global(f"❌ 账号[{index}] {server} 自动换 Cookie 异常：{str(exc)[:80]}")
 
         if cookie and "_login_mobile_" in cookie:
             cookies.append(cookie)
             AUTO_COOKIE_INDEX_BY_VALUE[cookie] = index
-            _log_global(f"✅ 账号[{index}] {mask_account(wxid)} 自动换 Cookie 成功")
+            COOKIE_TO_SERVER[cookie] = server
+            _log_global(f"✅ 账号[{index}] {server} 自动换 Cookie 成功")
             continue
 
-        _log_global(f"❌ 账号[{index}] {mask_account(wxid)} 自动换 Cookie 失败，已计入失败通知")
+        _log_global(f"❌ 账号[{index}] {server} 自动换 Cookie 失败")
         GLOBAL_NOTIFY_BUFFERS.append({
             "index": index,
-            "account": mask_account(wxid),
+            "account": server,
             "ok": False,
             "points": 0,
             "member_day_prizes": [],
-            "message": "自动换取顺丰 Cookie 失败，请检查该微信是否在线、是否已授权顺丰、是否绑定手机号",
+            "message": f"自动换取顺丰 Cookie 失败，请检查 code 服务 {server} 是否可用",
         })
-        if index < len(wxids):
+        if index < len(servers):
             time.sleep(2)
 
-    _log_global(f"📦 顺丰 Cookie 换取成功 {len(cookies)} / 解析账号 {len(wxids)}")
+    _log_global(f"📦 顺丰 Cookie 换取成功 {len(cookies)} / 服务地址 {len(servers)}")
     return cookies
 
 
 def append_notify_result(index: int, result: Dict[str, Any]) -> None:
     GLOBAL_NOTIFY_BUFFERS.append({
         "index": index,
-        "account": result.get("phone") or "未知账号",
+        "account": _mask_phone(result.get("phone") or "未知账号"),
         "ok": bool(result.get("success")),
         "points": int(result.get("points_earned") or 0),
         "member_day_prizes": result.get("member_day_prizes") or [],
+        "world_cup_exchange": result.get("world_cup_exchange") or {},
         "message": result.get("error") or "登录失效",
     })
 
@@ -1002,6 +1546,13 @@ def build_notify_report() -> str:
             prizes = item.get("member_day_prizes") or []
             if prizes:
                 lines.append(f"🎁 会员日：{', '.join(str(p) for p in prizes)}")
+            wc = item.get("world_cup_exchange") or {}
+            wc_items = wc.get("exchange_items", [])
+            wc_failed = wc.get("failed_items", [])
+            if wc_items:
+                lines.append(f"⚽ 兑奖成功: {len(wc_items)}件")
+            if wc_failed:
+                lines.append(f"⚽ 兑奖失败: {len(wc_failed)}件")
         else:
             lines.append(f"🧨 原因：{item.get('message')}")
 
@@ -1011,22 +1562,19 @@ def build_notify_report() -> str:
 
 
 def dispatch_notify() -> None:
-    if PUSH_SWITCH != "1" or not GLOBAL_NOTIFY_BUFFERS:
+    if not GLOBAL_NOTIFY_BUFFERS:
         return
     final_desp = build_notify_report()
     print("\n[推送报表阅览]\n" + final_desp)
-    try:
-        send_push_notification(SCRIPT_TITLE, final_desp)
-    except Exception as exc:
-        print(f"[通知] 推送失败：{exc}")
+    send_pushplus(SCRIPT_TITLE, final_desp)
 
 
 def main():
-    env_value = os.getenv('sfsyUrl') or ""
-    account_list = _auto_fetch_cookies() if (not env_value or SF_AUTO_COOKIE) else parse_env_accounts(env_value)
+    log_title()
+    account_list = _auto_fetch_cookies()
     
     if not account_list:
-        print("❌ 未捕获到在线顺丰账号凭证，请检查 wechat_server / SFWX_OPENID / sfwx_openid / sfsyUrl")
+        print("❌ 未捕获到顺丰账号凭证，请检查 SF_CODE_SERVERS 是否配置正确")
         GLOBAL_NOTIFY_BUFFERS.append({
             "index": 0,
             "account": "未配置",
@@ -1038,10 +1586,18 @@ def main():
         dispatch_notify()
         return 1
 
+
     print("==================================================")
     print(f"🎉 顺丰速运任务启动... 共加载 {len(account_list)} 个账户")
-    print("==================================================")
-    
+    if ENABLE_WORLD_CUP_EXCHANGE:
+        _any_account_exchange = any(EXCHANGE_ACCOUNTS.get(COOKIE_TO_SERVER.get(raw, ''), EXCHANGE_ACCOUNTS.get(raw, True)) for raw in account_list)
+        enabled_list = [k for k, v in EXCHANGE_ITEMS.items() if v.get('enabled')]
+        if _any_account_exchange and enabled_list:
+            print(f"\u26bd \u4e16\u754c\u676f\u5151\u5956: {enabled_list}")
+        elif enabled_list:
+            print('\u26bd \u4e16\u754c\u676f\u5151\u5956: \u6240\u6709\u8d26\u53f7\u5df2\u5173\u95ed\u5151\u6362')
+        else:
+            print('\u26bd \u4e16\u754c\u676f\u5151\u5956: \u65e0\u5f00\u542f\u9879')
     ok_count = 0
     for idx, raw in enumerate(account_list):
         result = run_account(raw, idx)
@@ -1050,6 +1606,15 @@ def main():
             ok_count += 1
         time.sleep(2)
 
+    success_count = sum(1 for item in GLOBAL_NOTIFY_BUFFERS if item.get("ok"))
+    fail_count = len(GLOBAL_NOTIFY_BUFFERS) - success_count
+    print()
+    print("╔" + "═" * 50 + "╗")
+    print("\u2551 🏁 顺丰速运任务执行完成                      \u2551")
+    print(f"\u2551 ✅ 成功: {success_count:<39}\u2551")
+    print(f"\u2551 ❌ 失败: {fail_count:<39}\u2551")
+    print(f"\u2551 🕒 结束时间: {now_text():<32}\u2551")
+    print("╚" + "═" * 50 + "╝")
     dispatch_notify()
     total_failed = sum(1 for item in GLOBAL_NOTIFY_BUFFERS if not item.get("ok"))
     return 0 if total_failed == 0 else 1
