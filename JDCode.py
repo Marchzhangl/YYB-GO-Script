@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# name: 京东小程序Code
+# cron: 0 */2 * * *
 """
 京东小程序 code 登录并同步青龙。
 
@@ -11,7 +13,6 @@
   export QL_CLIENT_SECRET='你的client_secret'
 """
 
-# cron: 0 */2 * * *
 from __future__ import annotations
 
 import json

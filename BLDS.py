@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# name: 布鲁大师
+# cron: 8 17 * * *
  
 """
 布鲁大师小程序动态 code 版
@@ -22,8 +24,6 @@
   socks5 代理需：
   pip install requests[socks]
 """
-# cron: 8 17 * * *
- 
 import json
 import os
 import random

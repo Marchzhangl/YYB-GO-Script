@@ -1,7 +1,6 @@
+#!/usr/bin/env python3
 # name: ole超市
 # cron: 16 6 * * *
-# cron: 30 9 * * *
-
 import requests
 import json
 import os
