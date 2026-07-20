@@ -4,13 +4,11 @@
 # -*- coding: utf-8 -*-
 
 """
-小福家小程序登录 - code 版
-code 从 YYB Go (YYB_SERVER) 获取，手机号加密数据从 phonecode 服务获取
+小福家小程序登录 - 纯 YYB Go 版
+code + 手机号加密数据均从 YYB Go 获取
 
 环境变量：
-  YYB_SERVER           必填：YYB Go 服务地址@微信账号标识，多行换行
-  PHONECODE_SERVER     可选：phonecode 服务地址，默认同 YYB Go 地址
-                        （如果 phonecode 和 YYB Go 在同一机器不同端口，单独配置）
+  YYB_SERVER    必填：YYB Go 服务地址@微信账号标识，多行换行
 
 依赖：
   pip install requests
@@ -23,40 +21,29 @@ import time
 import hashlib
 import requests
 
-# ========== 配置 ==========
 APPID = "wxe6ba46e6100e68e9"
 APPKEY = "b98b1abf926b44e3998e5573b42f101f"
 APPSECRET = "e5e3333fbb7448c7813281c68bad7f57"
 API_HOST = "api.xiaofujia.com"
 API_BASE = f"https://{API_HOST}"
-PLATFORM = 12  # WECHAT_MNP
+PLATFORM = 12
 
-# phonecode 服务地址，默认从 YYB_SERVER 第一行提取
-PHONECODE_SERVER = os.getenv("PHONECODE_SERVER", "")
-
-# ========== 从 YYB_SERVER 读取服务地址 ==========
 env_YYB_SERVER = os.getenv("YYB_SERVER", "")
 if env_YYB_SERVER:
     raw_lines = env_YYB_SERVER.splitlines()
 else:
     print("❌ 错误：未读取到环境变量 YYB_SERVER！")
-    print("青龙环境变量YYB_SERVER填写示例：192.168.3.191:8000@微信账号标识")
     sys.exit(1)
 
-SERVERS = []
-for line in raw_lines:
-    line = line.strip()
-    if line and "@" in line:
-        SERVERS.append(line)
-
+SERVERS = [l.strip() for l in raw_lines if l.strip() and "@" in l.strip()]
 if not SERVERS:
-    print("❌ 错误：YYB_SERVER 无有效账号（格式：地址@微信账号标识）")
+    print("❌ 错误：YYB_SERVER 无有效账号")
     sys.exit(1)
 
 print(f"✅ 读取到 {len(SERVERS)} 个账号")
 
 
-def parse_yyb_entry(raw: str) -> dict:
+def parse_yyb_entry(raw: str) -> dict | None:
     value = raw.strip()
     at_idx = value.index("@")
     server = value[:at_idx].strip()
@@ -66,111 +53,65 @@ def parse_yyb_entry(raw: str) -> dict:
     elif server.startswith("https://"):
         server = server[8:]
     server = server.rstrip("/")
-    if not server or not ref:
-        return None
-    return {"server": server, "ref": ref}
+    return {"server": server, "ref": ref} if server and ref else None
 
 
-def get_code(entry: str) -> str | None:
-    """从 YYB Go 获取微信 code"""
+def yyb_post(entry: str, endpoint: str) -> dict | None:
+    """通用 YYB Go 请求"""
     parsed = parse_yyb_entry(entry)
     if not parsed:
         return None
     server, ref = parsed["server"], parsed["ref"]
-    url = f"http://{server}/wxapp/getCode"
-    print(f"[{server}] 请求YYB Go获取code...")
+    url = f"http://{server}{endpoint}"
     try:
         resp = requests.post(url, json={"ref": ref, "app_id": APPID}, timeout=20)
         data = resp.json()
-        code = (((data.get("data") or {}).get("result") or {}).get("code"))
-        if data.get("code") != 0 or not code:
-            print(f"[{server}] 获取code失败: {json.dumps(data, ensure_ascii=False)[:200]}")
+        if data.get("code") != 0:
+            print(f"[{server}] {endpoint} 失败: {data.get('msg', '')}")
             return None
-        print(f"[{server}] 获取code成功: {code[:8]}****")
-        return code
+        return data.get("data", {})
     except Exception as e:
-        print(f"[{server}] 获取code异常: {e}")
+        print(f"[{server}] {endpoint} 异常: {e}")
         return None
 
 
-def get_phonecode_host(entry: str) -> str:
-    """获取 phonecode 服务地址"""
-    if PHONECODE_SERVER:
-        host = PHONECODE_SERVER
-    else:
-        parsed = parse_yyb_entry(entry)
-        host = parsed["server"] if parsed else ""
-    
-    # 去掉端口，phonecode 可能是另一个端口
-    # 如果没配 PHONECODE_SERVER，尝试同地址
-    if not host.startswith("http"):
-        host = f"http://{host}"
-    return host
-
-
-def get_mobile_encrypted(entry: str) -> dict | None:
-    """从 phonecode 服务获取手机号加密数据"""
-    parsed = parse_yyb_entry(entry)
-    if not parsed:
+def get_code(entry: str) -> str | None:
+    data = yyb_post(entry, "/wxapp/getCode")
+    if not data:
         return None
-    ref = parsed["ref"]
-    
-    phonecode_host = get_phonecode_host(entry)
-    url = f"{phonecode_host}/api/v1/wx/app/get/all/mobile"
-    print(f"[{phonecode_host}] 请求phonecode手机号数据...")
-    
-    try:
-        resp = requests.post(url, json={
-            "appid": APPID,
-            "wxid": ref,
-            "data": json.dumps({"api_name": "webapi_getuserwxphone", "with_credentials": True}),
-            "opt": 1
-        }, timeout=20)
-        data = resp.json()
-        
-        if data.get("Code") != 0 and data.get("code") != 0:
-            print(f"[{phonecode_host}] 获取手机号失败: {json.dumps(data, ensure_ascii=False)[:200]}")
-            return None
-        
-        all_mobile = data.get("Data", {}).get("ALLMobile", [])
-        if not all_mobile:
-            print(f"[{phonecode_host}] 未找到手机号数据")
-            return None
-        
-        mobile = all_mobile[0]
-        encrypted = mobile.get("encryptedData")
-        iv = mobile.get("iv")
-        if not encrypted or not iv:
-            print(f"[{phonecode_host}] 手机号数据不完整")
-            return None
-        
-        print(f"[{phonecode_host}] 获取手机号加密数据成功")
-        return {"encryptedData": encrypted, "iv": iv}
-    except Exception as e:
-        print(f"[{phonecode_host}] 获取手机号异常: {e}")
+    code = (data.get("result") or {}).get("code")
+    if code:
+        print(f"获取code成功: {code[:8]}****")
+    return code
+
+
+def get_phone_data(entry: str) -> dict | None:
+    """从 YYB Go /wxapp/getPhoneNumber 获取手机号加密数据"""
+    data = yyb_post(entry, "/wxapp/getPhoneNumber")
+    if not data:
         return None
+    result = data.get("result") or {}
+    encrypted = result.get("encryptedData")
+    iv = result.get("iv")
+    if not encrypted or not iv:
+        # 可能返回的是完整手机号，尝试其他字段
+        encrypted = result.get("encrypted_data") or data.get("encryptedData")
+        iv = result.get("iv") or data.get("iv")
+    if not encrypted or not iv:
+        print(f"手机号数据不完整: {json.dumps(result, ensure_ascii=False)[:200]}")
+        return None
+    print("获取手机号加密数据成功")
+    return {"encryptedData": encrypted, "iv": iv}
 
 
-def xiaofujia_sign(params: dict) -> str:
-    p = params.copy()
-    p["time"] = int(time.time())
-    p["appkey"] = APPKEY
-    sign_str = ""
-    for key in sorted(p.keys()):
-        if p[key] is not None:
-            sign_str += f"{key}{p[key]}"
-    sign_str += APPSECRET
-    return hashlib.md5(sign_str.encode()).hexdigest()
-
-
-def xiaofujia_login(code: str, mobile_data: dict) -> dict | None:
-    print("→ 开始小福家登录...")
+def xiaofujia_login(code: str, mobile: dict) -> dict | None:
+    print("→ 小福家登录...")
     login_url = f"{API_BASE}/familychat/user/login"
     
     auth_token = json.dumps({
         "code": code,
-        "mobile_encrypt_data": mobile_data["encryptedData"],
-        "mobile_iv": mobile_data["iv"]
+        "mobile_encrypt_data": mobile["encryptedData"],
+        "mobile_iv": mobile["iv"]
     })
     
     body = {
@@ -182,15 +123,14 @@ def xiaofujia_login(code: str, mobile_data: dict) -> dict | None:
     }
     
     t = int(time.time())
-    sign = xiaofujia_sign({})
+    params = {"time": t, "appkey": APPKEY}
+    sign_str = "".join(f"{k}{params[k]}" for k in sorted(params)) + APPSECRET
+    sign = hashlib.md5(sign_str.encode()).hexdigest()
     full_url = f"{login_url}?time={t}&appkey={APPKEY}&sign={sign}"
     
     headers = {
         "content-type": "application/json;charset=UTF-8",
         "Host": API_HOST,
-        "Connection": "keep-alive",
-        "cPkg": "MiTee Client on 8",
-        "Accept-Encoding": "gzip,compress,br,deflate",
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.49(0x18003121) NetType/WIFI Language/zh_CN",
         "Referer": "https://servicewechat.com/wxe6ba46e6100e68e9/116/page-frame.html"
     }
@@ -199,25 +139,20 @@ def xiaofujia_login(code: str, mobile_data: dict) -> dict | None:
         resp = requests.post(full_url, json=body, headers=headers, timeout=30)
         data = resp.json()
         if data.get("code") != 0:
-            print(f"✗ 小福家登录失败: {data.get('msg', '未知错误')}")
+            print(f"✗ 登录失败: {data.get('msg', '未知错误')}")
             return None
-        token = data.get("data", {})
-        access_token = token.get("access_token", "")
-        print(f"✓ 小福家登录成功！access_token: {access_token[:15]}...")
-        return {"access_token": access_token}
+        token = data.get("data", {}).get("access_token", "")
+        print(f"✓ 登录成功！access_token: {token[:15]}...")
+        return {"access_token": token}
     except Exception as e:
-        print(f"✗ 小福家登录异常: {e}")
+        print(f"✗ 登录异常: {e}")
         return None
 
 
-# ========== 主流程 ==========
 def main():
     print("┌─────────────────────────────┐")
     print("│ 小福家小程序登录 │")
     print("└─────────────────────────────┘")
-    
-    phonecode_host = get_phonecode_host(SERVERS[0]) if SERVERS else ""
-    print(f"phonecode 服务: {phonecode_host}")
     
     for i, entry in enumerate(SERVERS):
         parsed = parse_yyb_entry(entry)
@@ -227,26 +162,24 @@ def main():
         
         print(f"\n========== 账号[{i+1}] {parsed['ref']} ==========")
         
-        # 1. 从 YYB Go 获取 code
         code = get_code(entry)
         if not code:
+            print(f"✗ 获取code失败，跳过")
             continue
         
-        # 2. 从 phonecode 服务获取手机号
-        mobile_data = get_mobile_encrypted(entry)
-        if not mobile_data:
+        mobile = get_phone_data(entry)
+        if not mobile:
+            print(f"✗ 获取手机号失败，跳过")
             continue
         
-        # 3. 小福家登录
-        result = xiaofujia_login(code, mobile_data)
+        result = xiaofujia_login(code, mobile)
         if result:
-            print(f"✓ 账号[{i+1}] 登录成功")
-            print(f"ACCESS_TOKEN={result['access_token']}")
+            print(f"✓ 账号[{i+1}] ACCESS_TOKEN={result['access_token']}")
         else:
             print(f"✗ 账号[{i+1}] 登录失败")
         
         if i < len(SERVERS) - 1:
-            time.sleep(5)
+            time.sleep(3)
     
     print("\n┌─────────────────────────────┐")
     print("│ 所有账号处理完成 │")
