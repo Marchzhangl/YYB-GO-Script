@@ -88,7 +88,7 @@ function saveCache(cache) {
 
 async function getWxCode(server, ref) {
     try {
-        const res = await axios.post(`http://${server}:8000/wxapp/getCode`, {
+        const res = await axios.post(`http://${server}/wxapp/getCode`, {
             app_id: APPID,
             ref: String(ref)
         });
