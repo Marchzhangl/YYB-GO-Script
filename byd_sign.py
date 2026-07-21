@@ -65,7 +65,7 @@ APPSECRET = os.getenv("BYD_APPSECRET", "Kfl%BOk6C5PwARw8")
 BASE_URL = "https://mina.bydoceanauto.com"
 DECRYPT_CODE_URL = f"{BASE_URL}/?service=mina.decryptCode"
 SIGN_URL = f"{BASE_URL}/?s=ForCommonUcSrv.forward&serviceDir=activity/sign/signIn"
-INTEGRAL_URL = f"{BASE_URL}/?s=App.ForInterfaceMina.forward&serviceDir=/Integral/User/user"
+INTEGRAL_URL = f"{BASE_URL}/App/Forward2Rights/integral?serviceDir=/Integral/User/user"
 
 REQUEST_TIMEOUT = 30
 
