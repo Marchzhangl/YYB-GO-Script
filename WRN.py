@@ -5,6 +5,7 @@
 """
 薇诺娜专柜商城小程序签到脚本（YYB Go版）
 基于原版 v3.1.0 改写，适配 YYB_SERVER 格式
+import sys
 
 功能：
   1. YYB_SERVER 获取微信 code + 手机号 code
