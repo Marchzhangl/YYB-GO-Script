@@ -65,6 +65,7 @@ APPSECRET = os.getenv("BYD_APPSECRET", "Kfl%BOk6C5PwARw8")
 BASE_URL = "https://mina.bydoceanauto.com"
 DECRYPT_CODE_URL = f"{BASE_URL}/?service=mina.decryptCode"
 SIGN_URL = f"{BASE_URL}/?s=ForCommonUcSrv.forward&serviceDir=activity/sign/signIn"
+INTEGRAL_URL = f"{BASE_URL}/?service=App.ForInterfaceMina.forward&serverFlag=integralMallApi"
 
 REQUEST_TIMEOUT = 30
 
@@ -255,6 +256,41 @@ def do_sign(session_id: str) -> Dict[str, Any]:
     return data
 
 
+
+def get_user_integral(session_id: str) -> Dict[str, Any]:
+    """查询积分信息"""
+    payload_plain = json.dumps({
+        "session_id": session_id,
+        "app_version": "460",
+        "app_client": "mina",
+    })
+    encrypted_payload = aes_encrypt(payload_plain)
+
+    resp = requests.post(
+        INTEGRAL_URL,
+        headers=common_headers(),
+        data=encrypted_payload,
+        timeout=REQUEST_TIMEOUT,
+    )
+
+    resp_text = resp.text.strip()
+    data = None
+    try:
+        decrypted = aes_decrypt(resp_text)
+        data = json.loads(decrypted)
+    except Exception:
+        try:
+            json_data = resp.json()
+            if isinstance(json_data, dict):
+                data = json_data
+        except Exception:
+            pass
+
+    if not isinstance(data, dict):
+        raise Exception(f"解密/解析积分响应失败，原始内容: {resp_text[:200]}")
+    return data
+
+
 def run_account(index: int, total: int, server_entry: str) -> Dict[str, Any]:
     _, wxid = parse_yyb_go_entry(server_entry)
     result = {
@@ -300,6 +336,21 @@ def run_account(index: int, total: int, server_entry: str) -> Dict[str, Any]:
                 msg = f"签到成功 +{integral}积分 累计{days}天"
             result["success"] = True
             result["msg"] = msg
+            # 查询积分
+            try:
+                integral_data = get_user_integral(session_id)
+                i_ret = integral_data.get("ret")
+                if i_ret == 200:
+                    inner = (integral_data.get("data") or {}).get("data") or {}
+                    avail = inner.get("integral", 0)
+                    gained = inner.get("gain_integral_sum", 0)
+                    spent = inner.get("expend_integral_sum", 0)
+                    print(f"💰 [积分] 可用: {avail} | 累计获得: {gained} | 累计消耗: {spent}")
+                    result["msg"] += f" | 积分{avail}"
+                else:
+                    print(f"⚠️ [积分] 查询失败: ret={i_ret}")
+            except Exception as exc:
+                print(f"⚠️ [积分] 查询异常: {exc}")
         else:
             msg = sign_data.get("msg") or json.dumps(sign_data, ensure_ascii=False)[:100]
             print(f"❌ [签到] 失败: {msg}")
