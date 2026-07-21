@@ -341,6 +341,7 @@ def run_account(index: int, total: int, server_entry: str) -> Dict[str, Any]:
                 integral_data = get_user_integral(session_id)
                 i_ret = integral_data.get("ret")
                 if i_ret == 200:
+                    print(f"[DEBUG] 积分接口原始返回: {json.dumps(integral_data, ensure_ascii=False)[:500]}")
                     inner = (integral_data.get("data") or {}).get("data") or {}
                     avail = inner.get("available_integral_sum", 0)
                     freezing = inner.get("freezing_integral_sum", 0)
