@@ -341,12 +341,12 @@ def run_account(index: int, total: int, server_entry: str) -> Dict[str, Any]:
                 integral_data = get_user_integral(session_id)
                 i_ret = integral_data.get("ret")
                 if i_ret == 200:
-                    print(f"[DEBUG] 积分接口原始返回: {json.dumps(integral_data, ensure_ascii=False)[:500]}")
-                    inner = (integral_data.get("data") or {}).get("data") or {}
+                    inner = integral_data.get("data") or {}
                     avail = inner.get("available_integral_sum", 0)
                     freezing = inner.get("freezing_integral_sum", 0)
+                    gained = inner.get("gain_integral_sum", 0)
                     expiring = inner.get("going_expired_integral_sum", 0)
-                    print(f"💰 [积分] 可用: {avail} | 冻结: {freezing} | 即将过期: {expiring}")
+                    print(f"💰 [积分] 可用: {avail} | 累计获得: {gained} | 冻结: {freezing} | 即将过期: {expiring}")
                     result["msg"] += f" | 积分{avail}"
                 else:
                     print(f"⚠️ [积分] 查询失败: ret={i_ret}")
