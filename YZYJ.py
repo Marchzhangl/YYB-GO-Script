@@ -285,7 +285,7 @@ def login_by_code(server: str, code: str, proxies: dict | None) -> tuple[str | N
         resp = request_with_proxy(
             "POST", LOGIN_URL,
             headers=common_headers(),
-            json_data=payload,
+            json=payload,
             proxies=proxies, server=server,
         )
         data = resp.json()
@@ -318,7 +318,7 @@ def check_sign_status(server: str, token: str, proxies: dict | None) -> tuple[bo
         resp = request_with_proxy(
             "POST", SIGN_STATUS_URL,
             headers=common_headers(token, extra),
-            json_data=payload,
+            json=payload,
             proxies=proxies, server=server,
         )
         data = resp.json()
@@ -364,7 +364,7 @@ def submit_signin(server: str, token: str, proxies: dict | None) -> tuple[bool, 
         resp = request_with_proxy(
             "POST", SIGN_SUBMIT_URL,
             headers=common_headers(token, extra),
-            json_data=payload,
+            json=payload,
             proxies=proxies, server=server,
         )
         data = resp.json()
