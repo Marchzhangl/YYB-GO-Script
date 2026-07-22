@@ -115,6 +115,8 @@ def code_login(server_entry: str) -> str | None:
                 return m2.group(1)
 
         print(f"❌ 登录失败：未获取到token，状态码: {resp.status_code}")
+        print(f"   响应头: {dict(resp.headers)}")
+        print(f"   响应体: {resp.text[:500]}")
         return None
     except Exception as e:
         print(f"❌ 登录异常: {e}")

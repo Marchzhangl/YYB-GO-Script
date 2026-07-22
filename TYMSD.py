@@ -311,7 +311,7 @@ def login_by_code(server: str, code: str, proxies: dict | None) -> tuple[str | N
         resp = request_with_proxy(
             "POST", LOGIN_URL,
             headers=common_headers(),
-            json_data=payload,
+            json=payload,
             proxies=proxies, server=server,
         )
         data = resp.json()
@@ -373,7 +373,7 @@ def api_post(server: str, url: str, token: str, proxies: dict | None, payload: d
     resp = request_with_proxy(
         "POST", url,
         headers=common_headers(token),
-        json_data=payload,
+        json=payload,
         proxies=proxies, server=server,
     )
     return resp.json()
