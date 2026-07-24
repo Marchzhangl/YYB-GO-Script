@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 认养一头牛
-# cron: 15 9 * * *
+# cron: 17 9 * * *
 
 """
 认养一头牛签到（YYB Go 版）

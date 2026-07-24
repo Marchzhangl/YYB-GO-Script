@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 海尔智家
-# cron: 15 9 * * *
+# cron: 16 9 * * *
 
 """
 海尔智家小程序（YYB Go版）

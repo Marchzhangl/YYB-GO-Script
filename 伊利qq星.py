@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 伊利qq星
-# cron: 0 9 * * *
+# cron: 3 9 * * *
 # -*- coding: utf-8 -*-
 
 import json

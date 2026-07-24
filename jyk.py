@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 旧衣客签到
-# cron: 20 9 * * *
+# cron: 22 9 * * *
 """JYK (旧衣客) check-in script — adapted for YYB-GO.
 
 Flow:

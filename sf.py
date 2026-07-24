@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 顺丰速运自动任务
-# cron: 0 9 * * *
+# cron: 1 9 * * *
 
 """
 顺丰速运自动任务 动态 code 版 (YYB_SERVER 适配版)

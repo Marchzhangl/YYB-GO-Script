@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 甜润世界签到施肥
-# cron: 0 15 * * *
+# cron: 1 15 * * *
 # -*- coding: utf-8 -*-
 
 import os
