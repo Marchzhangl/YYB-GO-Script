@@ -937,7 +937,7 @@ def account_remark(account: Dict[str, str], cookie: str) -> str:
     if account.get("remark"):
         return account["remark"]
     pin = normalize_pin(cookie_pin(cookie))
-    return pin or f"JD_COOKIE自动更新-{account['name']}-ref{account['ref']}"
+    return pin or f"JD_COOKIE-{account['name']}"
 
 
 def find_existing_env(
@@ -1029,17 +1029,21 @@ def sync_ql(
     if not pure_cookie:
         raise RuntimeError("待同步结果缺少 pt_key/pt_pin")
     value = cookie if COOKIE_MODE == "all" else pure_cookie
-    remark = account_remark(account, pure_cookie)
+    new_remark = account_remark(account, pure_cookie)
     envs = ql_envs(token)
-    existing = find_existing_env(envs, pure_cookie, remark)
+    existing = find_existing_env(envs, pure_cookie, new_remark)
     if existing:
         item_id = env_id(existing)
         if item_id in (None, ""):
             raise RuntimeError("已有青龙变量缺少 id/_id")
-        update_ql_env(token, item_id, value, existing.get("remarks") or remark)
+        old_remark = str(existing.get("remarks") or "").strip()
+        old_pin = normalize_pin(cookie_pin(existing.get("value") or ""))
+        # 旧备注等于旧 pt_pin → 未被手动改过，用新 pt_pin 覆盖；否则保留旧备注
+        final_remark = new_remark if old_remark == old_pin else (old_remark or new_remark)
+        update_ql_env(token, item_id, value, final_remark)
         enable_ql_env(token, item_id)
         return "update"
-    create_ql_env(token, value, remark)
+    create_ql_env(token, value, new_remark)
     return "create"
 
 

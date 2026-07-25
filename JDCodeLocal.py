@@ -892,28 +892,41 @@ def account_remark(account: Dict[str, str], cookie: str) -> str:
     if account.get("remark"):
         return account["remark"]
     pin = normalize_pin(cookie_pin(cookie))
-    return pin or f"JD_COOKIE自动更新-{account['name']}-ref{account['ref']}"
+    return pin or f"JD_COOKIE-{account['name']}"
 
 
 def sync_local(
     account: Dict[str, str],
     cookie: str,
 ) -> str:
-    """直接写青龙 SQLite，不走 OpenAPI。返回 'update' 或 'create'。"""
+    """直接写青龙 SQLite，不走 OpenAPI。返回 'update' 或 'create'。
+
+    备注规则：
+    - 新建：默认用 pt_pin 值作为备注
+    - 更新：如果旧备注已被手动修改（不等于旧 pt_pin），保留旧备注不动；
+            否则用新 pt_pin 覆盖。
+    """
     pure_cookie = normalize_pt_cookie(cookie)
     if not pure_cookie:
         raise RuntimeError("待同步结果缺少 pt_key/pt_pin")
     value = cookie if COOKIE_MODE == "all" else pure_cookie
-    remark = account_remark(account, pure_cookie)
     target_pin = normalize_pin(cookie_pin(pure_cookie))
+    new_remark = account_remark(account, pure_cookie)
 
     conn = sqlite3.connect(QL_DB_PATH, timeout=10)
     try:
-        existing = find_existing_env(conn, target_pin, remark)
+        existing = find_existing_env(conn, target_pin, new_remark)
         if existing:
-            update_env(conn, int(existing["id"]), value, remark)
+            old_remark = str(existing.get("remarks") or "").strip()
+            old_pin = normalize_pin(cookie_pin(existing.get("value") or ""))
+            # 旧备注等于旧 pt_pin → 未被手动改过，用新 pt_pin 覆盖
+            if old_remark == old_pin:
+                final_remark = new_remark
+            else:
+                final_remark = old_remark
+            update_env(conn, int(existing["id"]), value, final_remark)
             return "update"
-        create_env(conn, value, remark)
+        create_env(conn, value, new_remark)
         return "create"
     finally:
         conn.close()
