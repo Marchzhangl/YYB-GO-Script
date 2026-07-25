@@ -14,6 +14,48 @@ YYB Go 适配版。
 ql repo https://github.com/SuperNaiBA/YYB-GO-Script.git "" "SendNotify.py" "main" ""
 ```
 
+## 京东 Cookie 脚本
+
+仓库提供两个京东小程序登录脚本，登录逻辑相同（code → login_lt → PT OAuth 兜底），区别在于 cookie 写入方式：
+
+| 脚本 | 写入方式 | 依赖环境变量 |
+|------|----------|--------------|
+| `JDCode.py` | 青龙 OpenAPI 写入 `JD_COOKIE` | `QL_URL` / `QL_CLIENT_ID` / `QL_CLIENT_SECRET` |
+| `JDCodeLocal.py` | 直写青龙 SQLite 数据库 | 无需以上三个 |
+
+### 配置示例
+
+```bash
+# 共用配置
+export YYB_SERVER='应用宝地址@openid'
+export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"}]'
+
+# JDCode.py 额外需要
+export QL_URL='青龙地址'
+export QL_CLIENT_ID='你的client_id'
+export QL_CLIENT_SECRET='你的client_secret'
+
+# JDCodeLocal.py 不需要上面三个，自动写 /ql/data/db/database.sqlite
+```
+
+### 可选配置
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `JD_LOGIN_MODE` | `auto` | `auto` / `code` / `full` |
+| `JD_COOKIE_MODE` | `pt` | `pt`（仅 pt_key/pt_pin）/ `all`（全部 cookie） |
+| `JD_COOKIE_ENV_NAME` | `JD_COOKIE` | 写入青龙的变量名 |
+| `QL_DB_PATH` | `/ql/data/db/database.sqlite` | 仅 JDCodeLocal，青龙数据库路径 |
+
+### 青龙任务
+
+```
+task SuperNaiBA_YYB-GO-Script/JDCode.py
+task SuperNaiBA_YYB-GO-Script/JDCodeLocal.py
+```
+
+cron 建议 `0 */2 * * *`。两个脚本二选一即可，不要同时跑。
+
 ## 注意事项
 
 - 不要带 `http://` 前缀
