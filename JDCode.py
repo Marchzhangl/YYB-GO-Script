@@ -6,11 +6,13 @@
 京东小程序 code 登录并同步青龙。
 
 账号配置示例：
-  export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"}]'
   export YYB_SERVER='应用宝地址@openid'
   export QL_URL='青龙地址'
   export QL_CLIENT_ID='你的client_id'
   export QL_CLIENT_SECRET='你的client_secret'
+
+可选：
+  export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"},{"name":"京东账号2","ref":"2"}]'  # 单/多账号配置，不填则自动读取 YYB_SERVER 的 /accounts
 """
 
 from __future__ import annotations

@@ -6,10 +6,10 @@
 京东小程序 code 登录，直接写入青龙本地数据库（不走 OpenAPI，无需 QL_URL/QL_CLIENT_ID/QL_CLIENT_SECRET）。
 
 账号配置示例：
-  export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"}]'
   export YYB_SERVER='应用宝地址@openid'
 
 可选：
+  export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"},{"name":"京东账号2","ref":"2"}]'  # 单/多账号配置，不填则自动读取 YYB_SERVER 的 /accounts
   export JD_LOGIN_MODE='auto'     # auto / code / full
   export JD_COOKIE_MODE='pt'      # pt / all
   export JD_COOKIE_ENV_NAME='JD_COOKIE'  # 写入青龙的变量名
