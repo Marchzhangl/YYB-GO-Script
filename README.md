@@ -26,9 +26,11 @@ ql repo https://github.com/SuperNaiBA/YYB-GO-Script.git "" "SendNotify.py" "main
 ### 配置示例
 
 ```bash
-# 共用配置
+# 必填
 export YYB_SERVER='应用宝地址@openid'
-export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"}]'
+
+# 可选：单/多账号配置（不填则自动读取 YYB_SERVER 的 /accounts）
+export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"},{"name":"京东账号2","ref":"2"}]'
 
 # JDCode.py 额外需要
 export QL_URL='青龙地址'
@@ -42,6 +44,7 @@ export QL_CLIENT_SECRET='你的client_secret'
 
 | 变量名 | 默认值 | 说明 |
 |--------|--------|------|
+| `JD_ACCOUNTS_JSON` | 空 | 单/多账号配置，JSON 数组，例：`[{"name":"京东账号1","ref":"1"},{"name":"京东账号2","ref":"2"}]` |
 | `JD_LOGIN_MODE` | `auto` | `auto` / `code` / `full` |
 | `JD_COOKIE_MODE` | `pt` | `pt`（仅 pt_key/pt_pin）/ `all`（全部 cookie） |
 | `JD_COOKIE_ENV_NAME` | `JD_COOKIE` | 写入青龙的变量名 |
