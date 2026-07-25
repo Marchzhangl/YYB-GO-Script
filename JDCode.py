@@ -7,7 +7,7 @@
 
 账号配置示例：
   export JD_ACCOUNTS_JSON='[{"name":"京东账号1","ref":"1"}]'
-  export YYB_SERVER='应用宝地址'
+  export YYB_SERVER='应用宝地址@openid'
   export QL_URL='青龙地址'
   export QL_CLIENT_ID='你的client_id'
   export QL_CLIENT_SECRET='你的client_secret'
@@ -28,8 +28,6 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
 # ========== 非敏感默认配置（环境变量优先） ==========
-
-CONFIG_YYB_SERVER = "http://192.168.8.110:8000"
 
 CONFIG_JD_PT_APPID = "wx2f5d8f9715c59d10"
 CONFIG_JD_PT_APP = "300"
@@ -64,7 +62,7 @@ def _env(name: str, default: str = "") -> str:
 
 
 JD_APPID = _env("JD_APPID", CONFIG_JD_APPID)
-YYB_SERVER = _env("YYB_SERVER", CONFIG_YYB_SERVER).rstrip("/")
+YYB_SERVER = _env("YYB_SERVER").rstrip("/")
 if YYB_SERVER and not YYB_SERVER.startswith("http"):
     YYB_SERVER = "http://" + YYB_SERVER
 # 多行 YYB_SERVER（地址@ref）取第一行纯地址作为 base URL
