@@ -351,7 +351,7 @@ def parse_yyb_go_env() -> List[Dict[str, str]]:
             {
                 "name": f"YYB_SERVER账号{index}",
                 "ref": ref,
-                "remark": f"{server}@{ref}",
+                "remark": "",
             }
         )
     return accounts
