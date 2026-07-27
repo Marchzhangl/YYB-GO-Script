@@ -11,6 +11,10 @@ EOOS Emby 管理站每日签到脚本
 验证方式: Cap.js PoW (SHA-256 工作量证明)
 签到流程: 登录 → 查状态 → 获取challenge → 算PoW → redeem → 签到
 
+📌 注册邀请：
+  带邀请注册（感谢各位老哥支持）: https://eoos.top/register?code=G7XKWW73
+  不想走邀请直接访问: https://eoos.top
+
 环境变量:
   EOOS_ACCOUNTS - 多账号配置，& 分隔多账号，每个格式: 用户名#密码
                   示例: user1#password1&user2#password2
