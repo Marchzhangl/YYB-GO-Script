@@ -27,19 +27,19 @@ import os
 import random
 import time
 from datetime import datetime, timezone, timedelta
-
-try:
-    from SendNotify import capture_output
-except Exception as exc:
-    print(f"[警告] 通知模块 SendNotify.py 导入失败：{exc}，将跳过通知推送。")
-
-    def capture_output(title: str = "脚本运行结果"):
-        def decorator(func):
-            return func
-
-        return decorator
+import io
+import sys
 
 import requests
+
+# 青龙自带通知模块
+try:
+    from notify import send
+except Exception as exc:
+    print(f"[警告] 青龙通知模块 notify.py 导入失败：{exc}，将跳过通知推送。")
+
+    def send(title: str, content: str, **kwargs):
+        pass
 
 
 BASE_URL = "https://www.milkcard.mall.ryytngroup.com"
@@ -512,8 +512,23 @@ def run_community_post(token: str):
         print(f"❌ 删帖失败: {msg}")
 
 
-@capture_output("认养一头牛签到运行结果")
 def main():
+    # 捕获所有输出，结束后用青龙 notify 推送
+    captured = io.StringIO()
+    orig_stdout = sys.stdout
+    sys.stdout = captured
+
+    try:
+        _run()
+    finally:
+        sys.stdout = orig_stdout
+        content = captured.getvalue()
+        print(content, end="")
+        if content.strip():
+            send("认养一头牛签到运行结果", content)
+
+
+def _run():
     servers = parse_yyb_servers()
     if not servers:
         print("❌ 未配置环境变量 YYB_SERVER")
