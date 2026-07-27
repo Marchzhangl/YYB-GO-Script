@@ -13,7 +13,7 @@ EOOS Emby 管理站每日签到脚本
 
 环境变量:
   EOOS_ACCOUNTS - 多账号配置，& 分隔多账号，每个格式: 用户名#密码
-                  示例: autman#***REDACTED***&deepseek#1***REDACTED***
+                  示例: user1#password1&user2#password2
   EOOS_USER     - 单账号用户名（兼容旧配置）
   EOOS_PASS     - 单账号密码（兼容旧配置）
 """
