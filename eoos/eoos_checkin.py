@@ -12,8 +12,10 @@ EOOS Emby 管理站每日签到脚本
 签到流程: 登录 → 查状态 → 获取challenge → 算PoW → redeem → 签到
 
 环境变量:
-  EOOS_USER  - 用户名
-  EOOS_PASS  - 密码
+  EOOS_ACCOUNTS - 多账号配置，& 分隔多账号，每个格式: 用户名#密码
+                  示例: autman#***REDACTED***&deepseek#1***REDACTED***
+  EOOS_USER     - 单账号用户名（兼容旧配置）
+  EOOS_PASS     - 单账号密码（兼容旧配置）
 """
 
 import os
@@ -25,8 +27,26 @@ import requests
 from datetime import datetime
 
 SITE_URL = "https://eoos.top"
-USERNAME = os.getenv("EOOS_USER", "")
-PASSWORD = os.getenv("EOOS_PASS", "")
+
+def load_accounts():
+    """加载账号列表，支持多账号(&分隔)和单账号(EOOS_USER/EOOS_PASS)"""
+    accounts_str = os.getenv("EOOS_ACCOUNTS", "")
+    accounts = []
+    if accounts_str:
+        for item in accounts_str.split("&"):
+            item = item.strip()
+            if not item:
+                continue
+            if "#" in item:
+                user, pwd = item.split("#", 1)
+                accounts.append((user.strip(), pwd.strip()))
+    # 兼容单账号模式
+    if not accounts:
+        user = os.getenv("EOOS_USER", "")
+        pwd = os.getenv("EOOS_PASS", "")
+        if user and pwd:
+            accounts.append((user, pwd))
+    return accounts
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -64,11 +84,11 @@ def cap_d(prefix, length):
     return s[:length]
 
 
-def login(session):
+def login(session, username, password):
     resp = session.post(
         f"{SITE_URL}/api/auth/login",
         headers=HEADERS,
-        json={"userName": USERNAME, "password": PASSWORD},
+        json={"userName": username, "password": password},
         timeout=15,
     )
     data = resp.json()
@@ -76,7 +96,7 @@ def login(session):
         raise Exception(f"登录失败: {data.get('message', resp.text)}")
     token = data["token"]
     user = data.get("user", {})
-    log(f"登录成功: {user.get('userName', USERNAME)} | 余额: {user.get('rCoin', '?')} RCoin")
+    log(f"[{username}] 登录成功 | 余额: {user.get('rCoin', '?')} RCoin")
     return token
 
 
@@ -197,65 +217,79 @@ def do_checkin(session, token, verification_token):
     return resp.json()
 
 
-def main():
-    if not USERNAME or not PASSWORD:
-        print("❌ 请设置环境变量 EOOS_USER 和 EOOS_PASS")
-        sys.exit(1)
-
+def checkin_one(username, password):
+    """单个账号签到流程"""
     session = requests.Session()
     try:
-        # 登录
-        token = login(session)
+        token = login(session, username, password)
 
-        # 查签到状态
         if get_checkin_status(session, token):
-            print("\n今日已签到，无需重复操作")
-            return
+            return True
 
-        # 获取 Cap challenge
-        log("获取验证 challenge...")
+        log(f"[{username}] 开始签到流程...")
+
+        log(f"[{username}] 获取验证 challenge...")
         challenge_data = get_challenge(session, token)
-        
-        if "challenge" not in challenge_data:
-            log(f"❌ 获取 challenge 失败: {challenge_data}")
-            sys.exit(1)
 
-        # 解 PoW
-        log("开始计算 PoW...")
+        if "challenge" not in challenge_data:
+            log(f"[{username}] ❌ 获取 challenge 失败: {challenge_data}")
+            return False
+
+        log(f"[{username}] 开始计算 PoW...")
         t0 = time.time()
         solutions = solve_challenges(session, token, challenge_data)
         elapsed = time.time() - t0
-        log(f"PoW 全部解出，耗时 {elapsed:.1f}s")
+        log(f"[{username}] PoW 全部解出，耗时 {elapsed:.1f}s")
 
-        # redeem 获取验证 token
-        log("提交验证...")
+        log(f"[{username}] 提交验证...")
         redeem_result = redeem(session, token, challenge_data["token"], solutions)
-        
+
         if not redeem_result.get("success"):
-            log(f"❌ 验证失败: {redeem_result.get('error', redeem_result)}")
-            sys.exit(1)
+            log(f"[{username}] ❌ 验证失败: {redeem_result.get('error', redeem_result)}")
+            return False
 
         verified_token = redeem_result.get("token", challenge_data["token"])
-        log("验证通过，执行签到...")
+        log(f"[{username}] 验证通过，执行签到...")
 
-        # 签到
         result = do_checkin(session, token, verified_token)
-        
+
         if result.get("success"):
             amount = result.get("amount", "?")
             unit = result.get("currencyUnit", "RCoin")
             balance = result.get("balance", "")
-            log(f"✅ 签到成功！获得 {amount} {unit}" + (f" | 余额: {balance}" if balance else ""))
+            log(f"[{username}] ✅ 签到成功！获得 {amount} {unit}" + (f" | 余额: {balance}" if balance else ""))
+            return True
         else:
             msg = result.get("message", "")
             if "已经签到" in msg:
-                log(f"今日已签到: {msg}")
-            else:
-                log(f"❌ 签到失败: {msg}")
-                sys.exit(1)
+                log(f"[{username}] 今日已签到: {msg}")
+                return True
+            log(f"[{username}] ❌ 签到失败: {msg}")
+            return False
 
     except Exception as e:
-        print(f"❌ 执行失败: {e}")
+        log(f"[{username}] ❌ 执行失败: {e}")
+        return False
+
+
+def main():
+    accounts = load_accounts()
+    if not accounts:
+        print("❌ 请设置环境变量 EOOS_ACCOUNTS (格式: 用户名#密码&用户名#密码)")
+        print("  或设置 EOOS_USER 和 EOOS_PASS")
+        sys.exit(1)
+
+    log(f"共 {len(accounts)} 个账号需要签到")
+    success_count = 0
+    for i, (user, pwd) in enumerate(accounts, 1):
+        log(f"--- 账号 {i}/{len(accounts)}: {user} ---")
+        if checkin_one(user, pwd):
+            success_count += 1
+        if i < len(accounts):
+            time.sleep(2)
+
+    log(f"签到完成: {success_count}/{len(accounts)} 成功")
+    if success_count < len(accounts):
         sys.exit(1)
 
 
