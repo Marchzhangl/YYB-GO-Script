@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# name: SendNotify
 """
 文件名：SendNotify.py
 功能：专为青龙/自建环境设计的 Python 核心通知推送模块，完美桥接 sendNotify.js 常用通知通道
