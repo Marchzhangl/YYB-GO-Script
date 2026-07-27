@@ -8,8 +8,7 @@ new Env('EOOS Emby 签到');
 """
 EOOS Emby 管理站每日签到脚本
 站点: https://eoos.top
-签到流程: 登录 → 获取自定义验证码 → OCR识别 → 验证 → 签到
-验证码识别: 依赖 dcf-ocr 服务 (localhost:7778)
+签到流程: 登录 → 查状态 → 获取验证码 → OCR识别 → 验证 → 签到
 
 环境变量:
   EOOS_USER     - 用户名
@@ -20,16 +19,15 @@ EOOS Emby 管理站每日签到脚本
 import os
 import sys
 import json
-import base64
 import time
 import requests
+from datetime import datetime
 
-# ============ 配置 ============
 SITE_URL = "https://eoos.top"
 OCR_URL = os.getenv("EOOS_OCR_URL", "http://localhost:7778")
 USERNAME = os.getenv("EOOS_USER", "")
 PASSWORD = os.getenv("EOOS_PASS", "")
-MAX_RETRY = 3  # 验证码识别重试次数
+MAX_RETRY = 3
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -40,14 +38,11 @@ HEADERS = {
 
 
 def log(msg):
-    """带时间戳的日志"""
-    from datetime import datetime
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}")
 
 
 def login(session):
-    """登录获取 JWT token"""
     resp = session.post(
         f"{SITE_URL}/api/auth/login",
         headers=HEADERS,
@@ -57,7 +52,6 @@ def login(session):
     data = resp.json()
     if "token" not in data:
         raise Exception(f"登录失败: {data.get('message', resp.text)}")
-
     token = data["token"]
     user = data.get("user", {})
     log(f"登录成功: {user.get('userName', USERNAME)} | 余额: {user.get('rCoin', '?')} RCoin")
@@ -65,7 +59,6 @@ def login(session):
 
 
 def get_checkin_status(session, token):
-    """查询签到状态"""
     resp = session.get(
         f"{SITE_URL}/api/checkin/status",
         headers={**HEADERS, "Authorization": f"Bearer {token}"},
@@ -79,7 +72,6 @@ def get_checkin_status(session, token):
 
 
 def generate_captcha(session, token, action="checkin"):
-    """获取自定义验证码图片"""
     resp = session.get(
         f"{SITE_URL}/api/captcha/generate",
         params={"action": action},
@@ -88,31 +80,28 @@ def generate_captcha(session, token, action="checkin"):
     )
     data = resp.json()
     if not data.get("success"):
-        raise Exception(f"获取验证码失败: {data.get('error', resp.text)}")
-
+        error = data.get("error", "未知错误")
+        if "未启用" in error:
+            return None, None  # 验证码功能未启用
+        raise Exception(f"获取验证码失败: {error}")
     captcha = data["data"]
     return captcha["sessionId"], captcha["imageData"]
 
 
 def solve_captcha(image_data):
-    """OCR 识别验证码图片"""
-    # imageData 可能带 data:image/...;base64, 前缀
     if "," in image_data and image_data.startswith("data:"):
         b64 = image_data.split(",", 1)[1]
     else:
         b64 = image_data
-
     resp = requests.post(
         f"{OCR_URL}/classification",
         json={"image": b64},
         timeout=15,
     )
-    result = resp.json().get("result", "").strip()
-    return result
+    return resp.json().get("result", "").strip()
 
 
 def verify_captcha(session, token, action, answer, session_id):
-    """提交验证码答案，返回验证后的 token (sessionId)"""
     resp = session.post(
         f"{SITE_URL}/api/captcha/verify",
         headers={**HEADERS, "Authorization": f"Bearer {token}"},
@@ -123,11 +112,9 @@ def verify_captcha(session, token, action, answer, session_id):
 
 
 def do_checkin(session, token, verification_token=None):
-    """执行签到"""
     payload = {}
     if verification_token:
         payload["verificationToken"] = verification_token
-
     resp = session.post(
         f"{SITE_URL}/api/checkin",
         headers={**HEADERS, "Authorization": f"Bearer {token}"},
@@ -138,12 +125,30 @@ def do_checkin(session, token, verification_token=None):
 
 
 def checkin_with_captcha(session, token):
-    """完整签到流程: 获取验证码 → OCR识别 → 验证 → 签到"""
     for attempt in range(1, MAX_RETRY + 1):
-        try:
-            log(f"获取验证码 (第{attempt}次)...")
-            session_id, image_data = generate_captcha(session, token, "checkin")
+        log(f"获取验证码 (第{attempt}次)...")
+        session_id, image_data = generate_captcha(session, token, "checkin")
 
+        if session_id is None:
+            # 验证码功能未启用，尝试直接签到
+            log("验证码功能未启用，尝试直接签到...")
+            result = do_checkin(session, token)
+            if result.get("success"):
+                amount = result.get("amount", "?")
+                unit = result.get("currencyUnit", "RCoin")
+                balance = result.get("balance", "")
+                log(f"✅ 签到成功！获得 {amount} {unit}" + (f" | 余额: {balance}" if balance else ""))
+                return True
+            else:
+                msg = result.get("message", "")
+                if "已经签到" in msg:
+                    log(f"今日已签到: {msg}")
+                    return True
+                log(f"❌ 签到失败: {msg}")
+                log("提示: 站点验证码功能未启用且后端要求验证，请联系站长修复")
+                return False
+
+        try:
             log("OCR识别中...")
             answer = solve_captcha(image_data)
             if not answer:
@@ -191,34 +196,15 @@ def main():
         sys.exit(1)
 
     session = requests.Session()
-
     try:
-        # 登录
         token = login(session)
 
-        # 查签到状态
         if get_checkin_status(session, token):
             print("\n今日已签到，无需重复操作")
             return
 
-        # 尝试带验证码签到
         log("开始签到流程...")
-        try:
-            success = checkin_with_captcha(session, token)
-        except Exception as e:
-            if "自定义验证码未启用" in str(e) or "获取验证码失败" in str(e):
-                log("验证码功能未启用，尝试直接签到...")
-                result = do_checkin(session, token)
-                if result.get("success"):
-                    log(f"✅ 签到成功！获得 {result.get('amount', '?')} {result.get('currencyUnit', 'RCoin')}")
-                    success = True
-                else:
-                    log(f"❌ 签到失败: {result.get('message', '未知错误')}")
-                    success = False
-            else:
-                raise
-
-        if not success:
+        if not checkin_with_captcha(session, token):
             sys.exit(1)
 
     except Exception as e:
