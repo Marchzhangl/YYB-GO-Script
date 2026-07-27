@@ -8,26 +8,25 @@ new Env('EOOS Emby 签到');
 """
 EOOS Emby 管理站每日签到脚本
 站点: https://eoos.top
-签到流程: 登录 → 查状态 → 获取验证码 → OCR识别 → 验证 → 签到
+验证方式: Cap.js PoW (SHA-256 工作量证明)
+签到流程: 登录 → 查状态 → 获取challenge → 算PoW → redeem → 签到
 
 环境变量:
-  EOOS_USER     - 用户名
-  EOOS_PASS     - 密码
-  EOOS_OCR_URL  - OCR服务地址 (可选, 默认 http://localhost:7778)
+  EOOS_USER  - 用户名
+  EOOS_PASS  - 密码
 """
 
 import os
 import sys
 import json
 import time
+import hashlib
 import requests
 from datetime import datetime
 
 SITE_URL = "https://eoos.top"
-OCR_URL = os.getenv("EOOS_OCR_URL", "http://localhost:7778")
 USERNAME = os.getenv("EOOS_USER", "")
 PASSWORD = os.getenv("EOOS_PASS", "")
-MAX_RETRY = 3
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -40,6 +39,29 @@ HEADERS = {
 def log(msg):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}")
+
+
+def fnv1a_hash(s):
+    """FNV-1a 32-bit hash (cap.js d function)"""
+    h = 2166136261
+    for c in s:
+        h ^= ord(c)
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) & 0xFFFFFFFF
+    return h
+
+
+def cap_d(prefix, length):
+    """cap.js d() function: deterministic hex string from prefix"""
+    seed = fnv1a_hash(prefix)
+    s = ""
+    state = seed
+    while len(s) < length:
+        # xorshift32
+        state ^= (state << 13) & 0xFFFFFFFF
+        state ^= (state >> 17) & 0xFFFFFFFF
+        state ^= (state << 5) & 0xFFFFFFFF
+        s += format(state, '08x')
+    return s[:length]
 
 
 def login(session):
@@ -71,123 +93,108 @@ def get_checkin_status(session, token):
     return False
 
 
-def generate_captcha(session, token, action="checkin"):
-    resp = session.get(
-        f"{SITE_URL}/api/captcha/generate",
-        params={"action": action},
-        headers={**HEADERS, "Authorization": f"Bearer {token}"},
-        timeout=15,
-    )
-    data = resp.json()
-    if not data.get("success"):
-        error = data.get("error", "未知错误")
-        if "未启用" in error:
-            return None, None  # 验证码功能未启用
-        raise Exception(f"获取验证码失败: {error}")
-    captcha = data["data"]
-    return captcha["sessionId"], captcha["imageData"]
-
-
-def solve_captcha(image_data):
-    if "," in image_data and image_data.startswith("data:"):
-        b64 = image_data.split(",", 1)[1]
-    else:
-        b64 = image_data
-    resp = requests.post(
-        f"{OCR_URL}/classification",
-        json={"image": b64},
-        timeout=15,
-    )
-    return resp.json().get("result", "").strip()
-
-
-def verify_captcha(session, token, action, answer, session_id):
+def get_challenge(session, token):
+    """获取 Cap PoW challenge"""
     resp = session.post(
-        f"{SITE_URL}/api/captcha/verify",
+        f"{SITE_URL}/api/cap/challenge",
         headers={**HEADERS, "Authorization": f"Bearer {token}"},
-        json={"action": action, "answer": answer, "sessionId": session_id},
+        json={"action": "checkin"},
         timeout=15,
     )
     return resp.json()
 
 
-def do_checkin(session, token, verification_token=None):
-    payload = {}
-    if verification_token:
-        payload["verificationToken"] = verification_token
+def solve_pow(salt, target):
+    """解 PoW: 找 nonce 使 SHA256(salt + nonce_str) 前段匹配 target hex
+    
+    cap.js 算法:
+    - target 是 hex 字符串 (如 "4a3f")
+    - o = 4 * target.length  (总 bits)
+    - a = o // 8  (完整字节数)
+    - l = o % 8   (剩余 bits)
+    - hash = SHA256(salt + str(nonce))
+    - 检查 hash 前 a 字节 == target 前 a 字节
+    - 如果 l > 0，检查 hash[a] 的前 l 位 == target[a] 的前 l 位
+    """
+    target_bytes = bytes.fromhex(target if len(target) % 2 == 0 else target + "0")
+    full_bytes = len(target) * 4 // 8  # 完整匹配字节数
+    rem_bits = (len(target) * 4) % 8   # 剩余 bits
+    
+    if rem_bits > 0:
+        mask = (0xFF << (8 - rem_bits)) & 0xFF
+    else:
+        mask = 0
+    
+    for nonce in range(0, 50000000):
+        data = f"{salt}{nonce}"
+        h = hashlib.sha256(data.encode()).digest()
+        
+        match = True
+        for i in range(full_bytes):
+            if h[i] != target_bytes[i]:
+                match = False
+                break
+        
+        if match and rem_bits > 0:
+            if (h[full_bytes] & mask) != (target_bytes[full_bytes] & mask):
+                match = False
+        
+        if match:
+            return nonce
+        
+        if nonce % 1000000 == 0 and nonce > 0:
+            log(f"  PoW 计算中... 已尝试 {nonce}")
+    
+    return None
+
+
+def solve_challenges(session, token, challenge_data):
+    """解所有 challenge，返回 solutions 数组"""
+    cap_token = challenge_data["token"]
+    ch = challenge_data["challenge"]
+    c = ch["c"]  # challenge 数量
+    s = ch["s"]  # salt 长度
+    d = ch["d"]  # target 长度
+    
+    log(f"PoW 参数: {c} challenges, salt_len={s}, target_len={d}")
+    
+    solutions = []
+    for i in range(1, c + 1):
+        salt = cap_d(f"{cap_token}{i}", s)
+        target = cap_d(f"{cap_token}{i}d", d)
+        
+        log(f"  challenge {i}/{c}: target={target[:8]}...")
+        nonce = solve_pow(salt, target)
+        
+        if nonce is None:
+            raise Exception(f"challenge {i} PoW 求解失败")
+        
+        log(f"  challenge {i} 解出: nonce={nonce}")
+        solutions.append(nonce)
+    
+    return solutions
+
+
+def redeem(session, token, cap_token, solutions):
+    """提交 PoW 解决方案，获取验证 token"""
+    resp = session.post(
+        f"{SITE_URL}/api/cap/redeem",
+        headers={**HEADERS, "Authorization": f"Bearer {token}"},
+        json={"token": cap_token, "solutions": solutions},
+        timeout=15,
+    )
+    return resp.json()
+
+
+def do_checkin(session, token, verification_token):
+    """执行签到"""
     resp = session.post(
         f"{SITE_URL}/api/checkin",
         headers={**HEADERS, "Authorization": f"Bearer {token}"},
-        json=payload,
+        json={"verificationToken": verification_token},
         timeout=15,
     )
     return resp.json()
-
-
-def checkin_with_captcha(session, token):
-    for attempt in range(1, MAX_RETRY + 1):
-        log(f"获取验证码 (第{attempt}次)...")
-        session_id, image_data = generate_captcha(session, token, "checkin")
-
-        if session_id is None:
-            # 验证码功能未启用，尝试直接签到
-            log("验证码功能未启用，尝试直接签到...")
-            result = do_checkin(session, token)
-            if result.get("success"):
-                amount = result.get("amount", "?")
-                unit = result.get("currencyUnit", "RCoin")
-                balance = result.get("balance", "")
-                log(f"✅ 签到成功！获得 {amount} {unit}" + (f" | 余额: {balance}" if balance else ""))
-                return True
-            else:
-                msg = result.get("message", "")
-                if "已经签到" in msg:
-                    log(f"今日已签到: {msg}")
-                    return True
-                log(f"❌ 签到失败: {msg}")
-                log("提示: 站点验证码功能未启用且后端要求验证，请联系站长修复")
-                return False
-
-        try:
-            log("OCR识别中...")
-            answer = solve_captcha(image_data)
-            if not answer:
-                log("识别结果为空，重试...")
-                continue
-            log(f"识别结果: {answer}")
-
-            log("提交验证...")
-            verify_result = verify_captcha(session, token, "checkin", answer, session_id)
-            if not verify_result.get("success"):
-                log(f"验证失败: {verify_result.get('error', '未知错误')}，重试...")
-                continue
-
-            verified_token = verify_result.get("sessionId", session_id)
-            log("验证通过，执行签到...")
-            result = do_checkin(session, token, verified_token)
-
-            if result.get("success"):
-                amount = result.get("amount", "?")
-                unit = result.get("currencyUnit", "RCoin")
-                balance = result.get("balance", "")
-                log(f"✅ 签到成功！获得 {amount} {unit}" + (f" | 余额: {balance}" if balance else ""))
-                return True
-            else:
-                msg = result.get("message", "")
-                if "已经签到" in msg:
-                    log(f"今日已签到: {msg}")
-                    return True
-                log(f"签到失败: {msg}")
-                return False
-
-        except Exception as e:
-            log(f"第{attempt}次出错: {e}")
-            if attempt < MAX_RETRY:
-                time.sleep(2)
-            continue
-
-    log(f"❌ {MAX_RETRY}次重试后仍失败")
-    return False
 
 
 def main():
@@ -197,15 +204,55 @@ def main():
 
     session = requests.Session()
     try:
+        # 登录
         token = login(session)
 
+        # 查签到状态
         if get_checkin_status(session, token):
             print("\n今日已签到，无需重复操作")
             return
 
-        log("开始签到流程...")
-        if not checkin_with_captcha(session, token):
+        # 获取 Cap challenge
+        log("获取验证 challenge...")
+        challenge_data = get_challenge(session, token)
+        
+        if "challenge" not in challenge_data:
+            log(f"❌ 获取 challenge 失败: {challenge_data}")
             sys.exit(1)
+
+        # 解 PoW
+        log("开始计算 PoW...")
+        t0 = time.time()
+        solutions = solve_challenges(session, token, challenge_data)
+        elapsed = time.time() - t0
+        log(f"PoW 全部解出，耗时 {elapsed:.1f}s")
+
+        # redeem 获取验证 token
+        log("提交验证...")
+        redeem_result = redeem(session, token, challenge_data["token"], solutions)
+        
+        if not redeem_result.get("success"):
+            log(f"❌ 验证失败: {redeem_result.get('error', redeem_result)}")
+            sys.exit(1)
+
+        verified_token = redeem_result.get("token", challenge_data["token"])
+        log("验证通过，执行签到...")
+
+        # 签到
+        result = do_checkin(session, token, verified_token)
+        
+        if result.get("success"):
+            amount = result.get("amount", "?")
+            unit = result.get("currencyUnit", "RCoin")
+            balance = result.get("balance", "")
+            log(f"✅ 签到成功！获得 {amount} {unit}" + (f" | 余额: {balance}" if balance else ""))
+        else:
+            msg = result.get("message", "")
+            if "已经签到" in msg:
+                log(f"今日已签到: {msg}")
+            else:
+                log(f"❌ 签到失败: {msg}")
+                sys.exit(1)
 
     except Exception as e:
         print(f"❌ 执行失败: {e}")
