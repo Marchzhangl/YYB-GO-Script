@@ -2307,7 +2307,7 @@ class _Args:
     no_droplet = False
     water_times = 100
     delay = 2.0
-    captcha_exit = True
+    captcha_exit = False
 
 
 def main():
