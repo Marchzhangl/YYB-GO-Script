@@ -40,9 +40,8 @@ const SERVERS = (process.env.YYB_SERVER || "")
     .filter(Boolean);
 
 if (!SERVERS.length) {
-    console.log("❌ 未配置环境变量 YYB_SERVER，请设置后重试");
-    console.log("格式示例：");
-    console.log("  YYB_SERVER=127.0.0.1:8088");
+    console.log("❌ 未配置环境变量 YYB_SERVER");
+    console.log("格式：地址@微信账号标识，多账号换行分隔");
     console.log("  或");
     console.log("  YYB_SERVER=127.0.0.1:8088\\n192.168.31.36:8088\\n192.168.31.88:8088");
     process.exit(1);

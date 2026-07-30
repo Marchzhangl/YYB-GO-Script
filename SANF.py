@@ -26,15 +26,12 @@ if env_YYB_SERVER:
 
 # 校验是否存在有效服务地址
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效地址！")
-    print("配置示例（变量值多条换行填写）：")
-    print("192.168.1.21:8088")
+    print("❌ 未配置环境变量 YYB_SERVER")
+print("格式：地址@微信账号标识，多账号换行分隔")
     print("192.168.31.111:8088")
     exit(1)
 
-print(f"✅ 成功读取 {len(SERVERS)} 台内网服务器：")
-for item in SERVERS:
-    print(f" - {item}")
+print(f"✅ 读取到 {len(SERVERS)} 个 YYB Go 账号")
 print("-" * 50)
 
 PROXY_API = os.getenv("PROXY_API", "")

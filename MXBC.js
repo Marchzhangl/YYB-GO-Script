@@ -18,14 +18,10 @@ if (envYybGo) {
 }
 // 无有效地址直接退出并提示
 if (SERVERS.length === 0) {
-    console.error("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！");
-    console.error("配置示例（青龙环境变量值，每行一个）：");
-    console.error("192.168.1.21:8088");
-    console.error("192.168.31.111:8088");
+    console.error("未配置环境变量 YYB_SERVER，请设置后重试（格式：地址@微信账号标识，多行换行）");
     process.exit(1);
 }
-console.log(`✅ 成功读取 ${SERVERS.length} 台内网wxcode服务：`);
-SERVERS.forEach(item => console.log(` - ${item}`));
+console.log(`✅ 读取到 ${SERVERS.length} 个 YYB Go 账号`);
 console.log("----------------------------------------\n");
 
 // 固定配置（无需修改）

@@ -84,7 +84,7 @@ function getWxCode(server, ref) {
             try {
                 const json = JSON.parse(data);
                 if (json.code === 0 && json.data?.result?.code) resolve(json.data.result.code);
-                else { console.log('获取code失败:', data); resolve(null); }
+                else { console.log(parsedServer + " 获取code失败: " + JSON.stringify(data));; resolve(null); }
             } catch (e) { console.log(e); resolve(null); }
         });
     });

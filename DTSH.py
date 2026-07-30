@@ -28,13 +28,12 @@ if env_YYB_SERVER:
 
 # 校验是否存在有效服务地址
 if len(CODE_URL_LIST) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效地址！")
-    print("配置示例（变量值多条换行填写）：")
-    print("http://192.168.1.21:8088/login")
+    print("❌ 未配置环境变量 YYB_SERVER")
+print("格式：地址@微信账号标识，多账号换行分隔")
     print("http://192.168.1.7:8088/login")
     exit(1)
 
-print(f"✅ 成功读取 {len(CODE_URL_LIST)} 台内网服务地址：")
+print(f"✅ 读取到 {len(CODE_URL_LIST)} 个 YYB Go 账号")
 for item in CODE_URL_LIST:
     print(f" - {item}")
 print("-" * 50)

@@ -98,7 +98,7 @@ async function getWxCode(server, ref) {
         console.log(`✗ 获取账号${ref}的code失败:`, res.data.message || res.data.msg || '未知错误');
         return null;
     } catch (e) {
-        console.log(`✗ 获取code请求出错:`, e.message);
+        console.log(parsedServer + " 获取code异常: " + e.message);;
         return null;
     }
 }

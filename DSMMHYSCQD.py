@@ -33,9 +33,8 @@ SERVERS = [
 ]
 
 if not SERVERS:
-    print("❌ 未配置环境变量 YYB_SERVER，请设置后重试")
-    print("格式示例：")
-    print("  YYB_SERVER=127.0.0.1:8088")
+    print("❌ 未配置环境变量 YYB_SERVER")
+print("格式：地址@微信账号标识，多账号换行分隔")
     print("  或")
     print("  YYB_SERVER=127.0.0.1:8088\\n192.168.31.36:8088\\n192.168.31.88:8088")
     exit(1)

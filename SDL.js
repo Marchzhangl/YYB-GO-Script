@@ -25,11 +25,10 @@ if (process.env.YYB_SERVER) {
 }
 // 校验服务器列表，无配置直接终止脚本
 if (SERVERS.length === 0) {
-    console.error("❌ 未读取到环境变量 YYB_SERVER，请配置 YYB_SERVER，多个地址换行填写，格式示例：");
-    console.error("192.168.1.21:8088\n192.168.31.111:8088");
+    console.error("未配置环境变量 YYB_SERVER，请设置后重试（格式：地址@微信账号标识，多行换行）");
     process.exit(1);
 }
-console.log(`✅ 成功读取 ${SERVERS.length} 台内网服务器：\n${SERVERS.join("\n")}`);
+console.log(`✅ 读取到 ${SERVERS.length} 个 YYB Go 账号`);
 
 // 品赞代理配置（青龙环境变量）
 const PROXY_API = process.env.PROXY_API || ""; // 代理提取API链接

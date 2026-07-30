@@ -149,7 +149,7 @@ class Tongcheng {
         const code = await getCode(this.serverEntry, APP.appid);
         if (!code) throw new Error("获取code失败");
 
-        console.log("获取code成功 " + code.slice(0, 8) + "****");
+        console.log(parsedServer + " 获取code成功");
 
         const res = await request({
             method: "POST",

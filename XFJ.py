@@ -32,15 +32,16 @@ env_YYB_SERVER = os.getenv("YYB_SERVER", "")
 if env_YYB_SERVER:
     raw_lines = env_YYB_SERVER.splitlines()
 else:
-    print("❌ 错误：未读取到环境变量 YYB_SERVER！")
+    print("❌ 未配置环境变量 YYB_SERVER")
+print("格式：地址@微信账号标识，多账号换行分隔")
     sys.exit(1)
 
 SERVERS = [l.strip() for l in raw_lines if l.strip() and "@" in l.strip()]
 if not SERVERS:
-    print("❌ 错误：YYB_SERVER 无有效账号")
+    print("❌ YYB_SERVER 无有效账号")
     sys.exit(1)
 
-print(f"✅ 读取到 {len(SERVERS)} 个账号")
+print(f"✅ 读取到 {len(SERVERS)} 个 YYB Go 账号")
 
 
 def parse_yyb_entry(raw: str) -> dict | None:

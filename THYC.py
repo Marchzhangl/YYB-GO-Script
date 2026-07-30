@@ -51,15 +51,12 @@ if env_YYB_SERVER:
 
 # 无有效地址直接退出并提示
 if len(SERVERS) == 0:
-    print("❌ 错误：未读取到环境变量 YYB_SERVER 或无有效IP端口！")
-    print("配置示例（青龙环境变量值，每行一个）：")
-    print("127.0.0.1:8088")
+    print("❌ 未配置环境变量 YYB_SERVER")
+print("格式：地址@微信账号标识，多账号换行分隔")
     print("192.168.1.21:8088")
     exit(1)
 
-print(f"✅ 成功读取 {len(SERVERS)} 台内网wxcode服务：")
-for item in SERVERS:
-    print(f" - {item}")
+print(f"✅ 读取到 {len(SERVERS)} 个 YYB Go 账号")
 print("-" * 60 + "\n")
 
 PLUSPLUS_TOKEN = os.getenv("PLUSPLUS_TOKEN", "")
