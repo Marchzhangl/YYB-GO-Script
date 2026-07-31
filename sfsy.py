@@ -222,18 +222,23 @@ class AutoCookieManager:
         self.session.verify = False
     
     def _get_online_accounts(self) -> List[Dict]:
+        """通过 YYB Go API GET /accounts 获取在线账号列表"""
         if not self.wx_server:
-            _log_global("❌ 未配置 wx_server_url，无法获取在线账号")
+            _log_global("❌ 未配置 YYB_SERVER，无法获取在线账号")
             return []
         try:
-            r = self.session.get(f"{self.wx_server}/api/v1/wx/user/status", timeout=10)
+            r = self.session.get(f"{self.wx_server}/accounts", timeout=10)
             j = r.json()
-            data = j.get("Data") or j.get("data") or {}
-            accounts = []
-            for k, v in data.items():
-                if isinstance(v, dict) and v.get("wxid") and v.get("survival") == 1:
-                    accounts.append(v)
-            return accounts
+            if j.get("code") != 0:
+                _log_global(f"❌ 获取在线账号失败: {j.get('msg')}")
+                return []
+            accounts = j.get("data") or []
+            if isinstance(accounts, dict):
+                # 兼容旧格式 {openid: {...}}
+                accounts = list(accounts.values())
+            # 只保留状态正常的账号
+            online = [a for a in accounts if a.get("status") and a.get("status") != "offline"]
+            return online
         except Exception as e:
             _log_global(f"❌ 获取在线账号失败: {e}")
             return []
@@ -960,7 +965,7 @@ def _auto_fetch_cookies() -> List[str]:
     if _SF_REFS:
         wxids = _SF_REFS
     else:
-        wxids = [a["wxid"] for a in mgr._get_online_accounts()]
+        wxids = [a.get("openid") or a.get("wxid") for a in mgr._get_online_accounts() if a.get("openid") or a.get("wxid")]
     if not wxids:
         return []
 
