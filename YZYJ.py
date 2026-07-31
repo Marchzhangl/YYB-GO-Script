@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 优智云家
-# cron: 23 9 * * *
+# cron: 23 9,21 * * *
 
 """
 优智云家品牌商城小程序（YYB Go版）

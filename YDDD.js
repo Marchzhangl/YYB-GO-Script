@@ -1,5 +1,5 @@
 // name: 云朵叮叮
-// cron: 0 7 * * *
+// cron: 0 7,19 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

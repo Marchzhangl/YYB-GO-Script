@@ -1,5 +1,5 @@
 // name: sinsin
-// cron: 0 6 * * *
+// cron: 0 6,18 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

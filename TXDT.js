@@ -1,5 +1,5 @@
 // name: 腾讯地图
-// cron: 0 8 * * *
+// cron: 0 8,20 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 // ====================== YYB Go 账号（环境变量 YYB_SERVER = 地址@微信账号标识，多行） ======================

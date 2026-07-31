@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: RIO会员
-# cron: 15 9 * * *
+# cron: 15 9,21 * * *
 
 """
 RIO会员小程序签到（YYB Go版）

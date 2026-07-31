@@ -1,5 +1,5 @@
 // name: 飞鹤
-// cron: 16 15 * * *
+// cron: 16 15,3 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

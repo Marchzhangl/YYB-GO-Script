@@ -1,5 +1,5 @@
 // name: 战马能量星球
-// cron: 12 8 * * *
+// cron: 12 8,20 * * *
 /**
  * 战马能量星球 — YYB Go 适配版
  * 接口域名：warhorsechina.cojoy.com.cn

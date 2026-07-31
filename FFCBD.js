@@ -1,5 +1,5 @@
 // name: 发发藏宝洞
-// cron: 24 15 * * *
+// cron: 24 15,3 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

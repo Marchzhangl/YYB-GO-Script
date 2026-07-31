@@ -1,5 +1,5 @@
 // name: 天牛旧衣服回收
-// cron: 8 8 * * *
+// cron: 8 8,20 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

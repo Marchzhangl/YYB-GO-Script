@@ -1,5 +1,5 @@
 // name: 谭木匠会员俱乐部
-// cron: 16 8 * * *
+// cron: 16 8,20 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

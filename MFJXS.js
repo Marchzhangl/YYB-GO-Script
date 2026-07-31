@@ -1,5 +1,5 @@
 // name: 蜜蜂惊喜社
-// cron: 16 11 * * *
+// cron: 16 11,23 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

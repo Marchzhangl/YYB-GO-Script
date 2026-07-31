@@ -1,5 +1,5 @@
 // name: 纳爱斯品质生活
-// cron: 24 10 * * *
+// cron: 24 10,22 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 name: EOOS Emby 签到
-cron: 30 8 * * *
+cron: 30 8,20 * * *
 new Env('EOOS Emby 签到');
 """
 

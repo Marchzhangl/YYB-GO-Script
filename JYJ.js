@@ -1,5 +1,5 @@
 // name: 劲友家
-// cron: 0 13 * * *
+// cron: 0 13,1 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

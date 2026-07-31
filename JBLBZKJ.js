@@ -1,5 +1,5 @@
 // name: 金巴厘杯中空间
-// cron: 40 13 * * *
+// cron: 40 13,1 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

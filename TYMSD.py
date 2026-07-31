@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 统一梦时代
-# cron: 21 9 * * *
+# cron: 21 9,21 * * *
 
 """
 统一梦时代小程序（YYB Go版）

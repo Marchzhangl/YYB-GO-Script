@@ -1,5 +1,5 @@
 // name: 龙湖天街
-// cron: 40 11 * * *
+// cron: 40 11,23 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

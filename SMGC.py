@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 上美广场
-# cron: 20 9 * * *
+# cron: 20 9,21 * * *
 
 """
 SM广场小程序（YYB Go版）

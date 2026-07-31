@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 加多宝Club
-# cron: 1 10 * * *
+# cron: 1 10,22 * * *
 
 """
 加多宝Club小程序（YYB Go版）

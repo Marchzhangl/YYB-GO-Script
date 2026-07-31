@@ -1,5 +1,5 @@
 // name: 花生帮粉丝俱乐部签到任务
-// cron: 0 14 * * *
+// cron: 0 14,2 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

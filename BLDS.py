@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 布鲁大师
-# cron: 8 17 * * *
+# cron: 8 17,5 * * *
 
 """
 布鲁大师小程序（YYB Go版）

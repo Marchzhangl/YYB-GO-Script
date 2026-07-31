@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 都市甜心
-# cron: 0 16 * * *
+# cron: 0 16,4 * * *
 # -*- coding: utf-8 -*-
 
 """

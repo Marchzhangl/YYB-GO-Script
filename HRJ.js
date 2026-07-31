@@ -1,5 +1,5 @@
 // name: 好人家
-// cron: 8 14 * * *
+// cron: 8 14,2 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

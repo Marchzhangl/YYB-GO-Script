@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 旧衣小二旧衣服回收
-# cron: 48 12 * * *
+# cron: 48 12,0 * * *
 # -*- coding: utf-8 -*-
  
 """

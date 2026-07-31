@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 小福家
-# cron: 30 7 * * *
+# cron: 30 7,19 * * *
 # -*- coding: utf-8 -*-
 
 """

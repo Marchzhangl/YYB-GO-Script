@@ -1,5 +1,5 @@
 // name: 电玩
-// cron: 40 15 * * *
+// cron: 40 15,3 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

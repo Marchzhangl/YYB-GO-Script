@@ -1,5 +1,5 @@
 // name: 可口可乐
-// cron: 32 12 * * *
+// cron: 32 12,0 * * *
 const axios = require("axios");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 const { HttpsProxyAgent } = require("https-proxy-agent");

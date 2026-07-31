@@ -1,5 +1,5 @@
 // name: CASETiFY
-// cron: 48 16 * * *
+// cron: 48 16,4 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 植白说
-# cron: 32 6 * * *
+# cron: 32 6,18 * * *
 
 """
 植白说官方商城小程序（YYB Go版）

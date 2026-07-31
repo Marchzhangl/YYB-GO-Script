@@ -1,5 +1,5 @@
 // name: 呼啦圈
-// cron: 16 14 * * *
+// cron: 16 14,2 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

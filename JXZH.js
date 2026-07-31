@@ -1,5 +1,5 @@
 // name: 匠心中华
-// cron: 8 13 * * *
+// cron: 8 13,1 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 // ====================== YYB Go 账号（环境变量 YYB_SERVER = 地址@微信账号标识，多行） ======================

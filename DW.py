@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 得物种树
-# cron: 30 8 * * *
+# cron: 30 8,20 * * *
 # -*- coding: utf-8 -*-
 """
 得物 (Dewu) 种树活动 - 自动签到 / 做任务 / 浇水领水滴脚本

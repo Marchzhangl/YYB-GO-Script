@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 袋鼠妈妈会员商场签到
-# cron: 8 16 * * *
+# cron: 8 16,4 * * *
 
 """
 袋鼠妈妈会员商场小程序签到脚本

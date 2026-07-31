@@ -1,5 +1,5 @@
 // name: 衣城通
-// cron: 8 7 * * *
+// cron: 8 7,19 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

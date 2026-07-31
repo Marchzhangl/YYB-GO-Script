@@ -1,5 +1,5 @@
 // name: 牛牛短剧
-// cron: 16 10 * * *
+// cron: 16 10,22 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

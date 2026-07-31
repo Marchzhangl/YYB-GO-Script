@@ -1,5 +1,5 @@
 // name: 同程旅行里程
-// cron: 21 8 * * *
+// cron: 21 8,20 * * *
 const axios = require("axios");
 const dns = require("dns");
 const https = require("https");

@@ -1,5 +1,5 @@
 // name: 橘子樱桃
-// cron: 40 12 * * *
+// cron: 40 12,0 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

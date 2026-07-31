@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 绿动新球
-# cron: 0 12 * * *
+# cron: 0 12,0 * * *
 # -*- coding: utf-8 -*-
  
 """

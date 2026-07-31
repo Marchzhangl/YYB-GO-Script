@@ -1,5 +1,5 @@
 // name: 艾瑞调研问卷
-// cron: 16 17 * * *
+// cron: 16 17,5 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

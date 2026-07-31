@@ -1,5 +1,5 @@
 // name: 三得利
-// cron: 48 8 * * *
+// cron: 48 8,20 * * *
 const axios = require("axios");
 const { SocksProxyAgent } = require('socks-proxy-agent');
 const { HttpsProxyAgent } = require('https-proxy-agent');

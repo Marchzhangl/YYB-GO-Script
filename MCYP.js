@@ -1,5 +1,5 @@
 // name: 名创优品
-// cron: 30 8 * * *
+// cron: 30 8,20 * * *
 const axios = require('axios');
 const CryptoJS = require('crypto-js');
 const fs = require('fs');

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 浓五的酒馆
-# cron: 8 10 * * *
+# cron: 8 10,22 * * *
 # -*- coding: utf-8 -*-
 
 """

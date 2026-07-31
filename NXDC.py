@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 奈雪的茶
-# cron: 2 10 * * *
+# cron: 2 10,22 * * *
 # -*- coding: utf-8 -*-
 """
 脚本名称：奈雪点单动态code签到

@@ -1,5 +1,5 @@
 // name: 五个女博士
-// cron: 48 7 * * *
+// cron: 48 7,19 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

@@ -1,5 +1,5 @@
 // name: 顾家家居会员俱乐部
-// cron: 20 8 * * *
+// cron: 20 8,20 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 

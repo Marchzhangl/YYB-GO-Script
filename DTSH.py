@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: DT生活
-# cron: 48 15 * * *
+# cron: 48 15,3 * * *
 import os
 import random
 import time

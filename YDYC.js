@@ -1,5 +1,5 @@
 // name: 优点云创
-// cron: 48 6 * * *
+// cron: 48 6,18 * * *
 const axios = require("axios");
 // ====================== YYB Go 账号（环境变量 YYB_SERVER = 地址@微信账号标识，多行） ======================
 const SERVERS = (process.env.YYB_SERVER || "")

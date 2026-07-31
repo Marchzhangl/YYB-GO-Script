@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 途虎养车
-# cron: 24 8 * * *
+# cron: 24 8,20 * * *
 # -*- coding: utf-8 -*-
 
 """

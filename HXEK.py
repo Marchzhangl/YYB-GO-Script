@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 鸿星尔克
-# cron: 18 9 * * *
+# cron: 18 9,21 * * *
 
 """
 鸿星尔克小程序（YYB Go版）

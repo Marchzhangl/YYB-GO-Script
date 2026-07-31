@@ -1,5 +1,5 @@
 // name: 梦想家TSE
-// cron: 32 10 * * *
+// cron: 32 10,22 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 三福
-# cron: 0 9 * * *
+# cron: 0 9,21 * * *
 import os
 import time
 import random

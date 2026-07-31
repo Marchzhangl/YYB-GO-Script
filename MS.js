@@ -1,5 +1,5 @@
 // name: 慕斯
-// cron: 48 10 * * *
+// cron: 48 10,22 * * *
 const axios = require("axios");
 /* __YYB_SERVER_DOLLAR_SHIM__ */
 if (typeof $ === 'undefined') {

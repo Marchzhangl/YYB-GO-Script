@@ -1,5 +1,5 @@
 // name: 康师傅畅饮社
-// cron: 24 12 * * *
+// cron: 24 12,0 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

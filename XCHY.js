@@ -1,5 +1,5 @@
 // name: 携程会员
-// cron: 24 7 * * *
+// cron: 24 7,19 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

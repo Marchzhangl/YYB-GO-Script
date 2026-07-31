@@ -1,5 +1,5 @@
 // name: 老板电器ROKI
-// cron: 16 12 * * *
+// cron: 16 12,0 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

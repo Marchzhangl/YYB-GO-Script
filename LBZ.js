@@ -1,5 +1,5 @@
 // name: 绿鼻子
-// cron: 8 12 * * *
+// cron: 8 12,0 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

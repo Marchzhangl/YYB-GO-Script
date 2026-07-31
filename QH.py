@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 统一快乐星球茄皇（五期）
-# cron: 25 10 * * *
+# cron: 25 10,22 * * *
 
 """
 统一快乐星球茄皇五期（YYB Go 版）

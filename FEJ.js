@@ -1,5 +1,5 @@
 // name: 敷尔佳
-// cron: 32 15 * * *
+// cron: 32 15,3 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

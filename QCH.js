@@ -1,5 +1,5 @@
 // name: 七彩虹签到
-// cron: 30 10 * * *
+// cron: 30 10,22 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

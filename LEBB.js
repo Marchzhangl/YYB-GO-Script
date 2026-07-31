@@ -1,5 +1,5 @@
 // name: 烈儿宝贝
-// cron: 48 11 * * *
+// cron: 48 11,23 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

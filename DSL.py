@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 大参林健康
-# cron: 8 9 * * *
+# cron: 8 9,21 * * *
 
 """
 大参林健康小程序人参游戏（YYB Go版）

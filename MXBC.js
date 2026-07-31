@@ -1,5 +1,5 @@
 // name: 蜜雪冰城
-// cron: 40 10 * * *
+// cron: 40 10,22 * * *
 const axios = require("axios");
 const rs = require("jsrsasign");
 

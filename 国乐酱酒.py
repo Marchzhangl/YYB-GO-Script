@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # name: 国乐酱酒
-# cron: 41 9 * * *
+# cron: 41 9,21 * * *
 # -*- coding: utf-8 -*-
 
 import os

@@ -1,5 +1,5 @@
 // name: 麦富迪会员
-// cron: 24 11 * * *
+// cron: 24 11,23 * * *
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");

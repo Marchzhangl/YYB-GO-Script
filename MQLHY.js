@@ -1,5 +1,5 @@
 // name: 米其林会员
-// cron: 0 11 * * *
+// cron: 0 11,23 * * *
 const axios = require("axios");
 // ====================== YYB Go 账号（环境变量 YYB_SERVER = 地址@微信账号标识，多行） ======================
 const SERVERS = (process.env.YYB_SERVER || "")

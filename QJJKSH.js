@@ -1,5 +1,5 @@
 // name: 千金健康生活
-// cron: 32 9 * * *
+// cron: 32 9,21 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

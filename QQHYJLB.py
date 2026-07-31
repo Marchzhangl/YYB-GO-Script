@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # name: 洽洽会员俱乐部
-# cron: 25 9 * * *
+# cron: 25 9,21 * * *
 
 """
 洽洽会员俱乐部小程序（YYB Go版）

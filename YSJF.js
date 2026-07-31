@@ -1,5 +1,5 @@
 // name: 影视飓风
-// cron: 40 6 * * *
+// cron: 40 6,18 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

@@ -1,5 +1,5 @@
 // name: 日清食品
-// cron: 8 9 * * *
+// cron: 8 9,21 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");

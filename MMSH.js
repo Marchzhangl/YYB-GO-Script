@@ -1,5 +1,5 @@
 // name: 米萌生活
-// cron: 8 11 * * *
+// cron: 8 11,23 * * *
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
