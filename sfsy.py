@@ -320,8 +320,10 @@ class AutoCookieManager:
             j = r.json()
             if j.get("sessionId") and j.get("openid"):
                 return j
+            _log_global(f"⚠️ appOnLogin 响应异常: HTTP {r.status_code} body={str(j)[:200]}")
             return None
-        except Exception:
+        except Exception as e:
+            _log_global(f"⚠️ appOnLogin 异常: {str(e)[:120]}")
             return None
 
     def _get_oauth_redirect_info(self, ucmp_sid: str) -> Tuple[Optional[str], Optional[str]]:
