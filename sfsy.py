@@ -68,6 +68,8 @@ def _parse_yyb_server(raw: str):
             continue
         parts = line.split("@", 1)
         s = parts[0].strip().rstrip("/")
+        if not s.startswith("http://") and not s.startswith("https://"):
+            s = "http://" + s
         r = parts[1].strip()
         if not s or not r:
             continue
