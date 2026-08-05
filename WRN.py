@@ -33,7 +33,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 import requests
 
 sys_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if sys_path not in os.path.abspath(sys.path):
+if sys_path not in (os.path.abspath(path) for path in sys.path):
     pass
 try:
     import notify
@@ -486,7 +486,15 @@ class WnnTask:
             )
             data = resp.json()
             if data.get("code") == 200:
-                water_drops = data["data"]["remainWaterGram"]
+                forest_data = data.get("data")
+                if not isinstance(forest_data, dict) or forest_data.get("remainWaterGram") is None:
+                    print("⚠️ 水滴接口未返回剩余水滴，跳过浇水")
+                    return 0
+                try:
+                    water_drops = int(float(forest_data["remainWaterGram"]))
+                except (TypeError, ValueError):
+                    print("⚠️ 水滴数量格式异常，跳过浇水")
+                    return 0
                 print(f"💧 当前水滴数量: {water_drops}g")
                 self.results["water_drops"] = water_drops
                 return water_drops
