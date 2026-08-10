@@ -157,14 +157,18 @@ def parse_proxy_response(text) -> dict | None:
     if not text:
         return None
 
+    parsed_json = False
     try:
         data = json.loads(text)
+        parsed_json = True
         proxy_obj = None
 
         if isinstance(data.get("data"), list) and data["data"]:
             proxy_obj = data["data"][0]
         elif isinstance(data.get("data"), dict):
-            proxy_obj = data["data"]
+            data_obj = data["data"]
+            proxy_list = data_obj.get("proxy_list")
+            proxy_obj = proxy_list[0] if isinstance(proxy_list, list) and proxy_list else data_obj
         elif data.get("ip") and data.get("port"):
             proxy_obj = data
         elif isinstance(data.get("result"), dict):
@@ -182,6 +186,9 @@ def parse_proxy_response(text) -> dict | None:
                 }
     except Exception:
         pass
+
+    if parsed_json:
+        return None
 
     if ":" in text:
         parts = text.split(":")
