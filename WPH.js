@@ -52,6 +52,7 @@ let userIdx = 1;
 
 const MINI_APP_ID = "wxe9714e742209d35f";
 const PACKAGE_VERSION = "1371";
+const MINI_APP_VERSION = "2.19.13.20260731";
 const API_KEY = "ce29a51aa5c94a318755b2529dcb8e0b";
 const HASH = "ptx26";
 const ACT_ID = "H3gRnE1Xi18=";
@@ -59,9 +60,11 @@ const SIGN_SECRET_ENC = "Ql4mW09F3urBNdzBLfK6UuRTqj22Bta7eEKTO7n5jFf9uU6FZZmcfe/
 
 const CACHE_FILE = path.join(__dirname, "token_caches", "vipshop_token_cache.json");
 try { fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true }); } catch (e) {}
-const DEFAULT_MARS_CID = process.env.vipshop_mars_cid || "104104";
+const CONFIGURED_MARS_CID = String(process.env.vipshop_mars_cid || "").trim();
 const DEFAULT_WAREHOUSE = "VIP_NH";
-const DEFAULT_AREA = "104104";
+const DEFAULT_PROVINCE = "104104";
+const DEFAULT_AREA = "104104101";
+const ACCOUNT_DELAY_MS = Math.max(1500, Number(process.env.VIPSHOP_ACCOUNT_DELAY_MS || 5000));
 
 function splitAccounts(value = "") {
   return String(value)
@@ -106,6 +109,24 @@ function sha1(text) {
 
 function md5(text) {
   return crypto.createHash("md5").update(String(text)).digest("hex");
+}
+
+// Same format as @wxnpm/wx-randcode used by the official mini program.
+function createMarsCid() {
+  const timestamp = Date.now().toString();
+  const randomHex = crypto.randomBytes(16).toString("hex");
+  let sum = [...timestamp].reduce((total, value) => total + Number(value), 0);
+  const checksumIndex = sum % 32;
+  for (let i = 0; i < randomHex.length; i++) {
+    if (i !== checksumIndex) sum += parseInt(randomHex[i], 16);
+  }
+  const checksum = (sum % 16).toString(16);
+  return `${timestamp}_${randomHex.slice(0, checksumIndex)}${checksum}${randomHex.slice(checksumIndex + 1)}`;
+}
+
+function normalizeMarsCid(value) {
+  const candidate = String(value || "").trim();
+  return /^\d{13}_[0-9a-f]{32}$/i.test(candidate) ? candidate : createMarsCid();
 }
 
 function aesDecryptBase64(text) {
@@ -184,7 +205,7 @@ class Vipshop {
     this.userId = this.account.userId || "";
     this.vipOpenid = this.account.vipOpenid || "";
     this.unionid = this.account.unionid || "";
-    this.marsCid = this.account.marsCid || DEFAULT_MARS_CID;
+    this.marsCid = this.account.marsCid || CONFIGURED_MARS_CID;
     this.cacheKey = this.openid || (this.vipOpenid ? md5(this.vipOpenid).slice(0, 16) : `account_${index}`);
   }
 
@@ -210,14 +231,14 @@ class Vipshop {
       mars_cid: this.marsCid,
       warehouse: DEFAULT_WAREHOUSE,
       fdc_area_id: DEFAULT_AREA,
-      province_id: DEFAULT_AREA,
+      province_id: DEFAULT_PROVINCE,
       wap_consumer: "A1",
       t: Math.floor(Date.now() / 1000),
       net: "WIFI",
       width: 375,
       height: 667,
       phone_model: "Windows",
-      phone_brand: "",
+      phone_brand: "microsoft",
       sys_version: "Windows 10",
       is_default_area: "1",
       app_theme_mode: "0",
@@ -307,7 +328,7 @@ class Vipshop {
     this.userId = this.userId || cached.userId || "";
     this.vipOpenid = this.vipOpenid || cached.vipOpenid || "";
     this.unionid = this.unionid || cached.unionid || "";
-    this.marsCid = this.account.marsCid || cached.marsCid || this.marsCid;
+    this.marsCid = normalizeMarsCid(this.account.marsCid || cached.marsCid || this.marsCid);
   }
 
   async getVipWechatInfo(code) {
@@ -354,13 +375,29 @@ class Vipshop {
 
   async ensureLogin() {
     this.loadCache();
+    this.saveCache({ miniAppVersion: MINI_APP_VERSION });
     if (this.token && this.userId && this.vipOpenid) {
       this.log(`使用缓存登录态 userId=${this.userId} VIP_TANK=${mask(this.token)}`);
       return;
     }
-    const code = await getWxCode(this.server);
-    if (!this.vipOpenid) await this.getVipWechatInfo(code);
-    if (!this.token || !this.userId) await this.autoLogin(code);
+
+    let code = await getWxCode(this.server);
+    if (!code) throw new Error("YYB 未返回有效 wx.login code");
+
+    // The official app performs trylogin before LiteApp/getUserInfo.
+    if (!this.token || !this.userId) {
+      await this.autoLogin(code);
+      this.saveCache({ miniAppVersion: MINI_APP_VERSION });
+    }
+    if (!this.vipOpenid) {
+      try {
+        await this.getVipWechatInfo(code);
+      } catch (firstError) {
+        code = await getWxCode(this.server);
+        if (!code) throw firstError;
+        await this.getVipWechatInfo(code);
+      }
+    }
     this.saveCache();
   }
 
@@ -441,7 +478,7 @@ async function main() {
   }
   for (let i = 0; i < accounts.length; i++) {
     await new Vipshop(accounts[i], i + 1).run();
-    if (i < accounts.length - 1) await await sleep(1500, 3000);
+    if (i < accounts.length - 1) await sleep(ACCOUNT_DELAY_MS + Math.floor(Math.random() * 2000));
   }
 }
 

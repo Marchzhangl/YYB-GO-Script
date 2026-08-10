@@ -148,14 +148,18 @@ def parse_proxy_response(text: Any) -> Dict[str, Any] | None:
     if not text:
         return None
 
+    parsed_json = False
     try:
         data = json.loads(text)
+        parsed_json = True
         proxy_obj = None
 
         if isinstance(data.get("data"), list) and data["data"]:
             proxy_obj = data["data"][0]
         elif isinstance(data.get("data"), dict):
-            proxy_obj = data["data"]
+            data_obj = data["data"]
+            proxy_list = data_obj.get("proxy_list")
+            proxy_obj = proxy_list[0] if isinstance(proxy_list, list) and proxy_list else data_obj
         elif data.get("ip") and data.get("port"):
             proxy_obj = data
         elif isinstance(data.get("result"), dict):
@@ -173,6 +177,9 @@ def parse_proxy_response(text: Any) -> Dict[str, Any] | None:
                 }
     except Exception:
         pass
+
+    if parsed_json:
+        return None
 
     if ":" in text:
         parts = text.split(":")
@@ -476,11 +483,13 @@ def run_account(index: int, total: int, server: str) -> Dict[str, Any]:
         print(f"🔍 [用户] 响应数据: {json_preview(user_info_resp, 200)}")
 
         if user_info_resp.get("code") == 0 and user_info_resp.get("data"):
-            member_data = user_info_resp["data"].get("member", {})
-            grade_data = user_info_resp["data"].get("grade", {})
+            user_data = user_info_resp["data"]
+            member_data = user_data.get("member") or {}
+            visitor_data = user_data.get("visitor") or {}
+            grade_data = user_data.get("grade") or {}
             points_balance = to_int(member_data.get("points", 0))
-            member_name = member_data.get("nick_name", "未知")
-            member_level = grade_data.get("level_name", "普通会员")
+            member_name = member_data.get("nick_name") or visitor_data.get("nick_name") or "未注册会员"
+            member_level = grade_data.get("level_name") or "普通会员"
 
             result["initialScore"] = points_balance
             result["userInfo"] = f"{member_name} {member_level} 当前积分{points_balance}"
@@ -526,7 +535,7 @@ def run_account(index: int, total: int, server: str) -> Dict[str, Any]:
 
             if sign_today_resp.get("code") == 0 and sign_today_resp.get("data"):
                 today_data = sign_today_resp["data"]
-                prize = today_data.get("prize", {})
+                prize = today_data.get("prize") or {}
                 goods_name = prize.get("goodsName", "无奖励")
                 
                 result["signMsg"] = f"签到成功 获得{goods_name} 连续{sign_days + 1}天"
@@ -551,7 +560,7 @@ def run_account(index: int, total: int, server: str) -> Dict[str, Any]:
         )
 
         if final_user_info_resp.get("code") == 0 and final_user_info_resp.get("data"):
-            member_data = final_user_info_resp["data"].get("member", {})
+            member_data = final_user_info_resp["data"].get("member") or {}
             points_balance = to_int(member_data.get("points", 0))
 
             result["finalScore"] = points_balance
