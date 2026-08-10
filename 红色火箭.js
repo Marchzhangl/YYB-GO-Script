@@ -403,14 +403,14 @@ async function apiRequest(method, url, data, token, encryptVer, openId, userId, 
 async function getPhoneCodeInfo(wxid) {
     const cleanWxid = String(wxid).split('#')[0].trim();
     const isYyb = Boolean(findYybEntry(cleanWxid)) || /^\d+$/.test(cleanWxid) || /^o[a-zA-Z0-9_-]{20,}$/.test(cleanWxid);
-    
+
     let respData;
     if (isYyb) {
         // 使用 YYB 协议获取手机号 code
         const entry = selectYybEntry(cleanWxid);
         const resolvedRef = entry.ref;
         const url = entry.server + '/wxapp/getPhoneNumber';
-        
+
         if (debug) log(`[YYB] 请求手机号code: ref=${resolvedRef}, app_id=${APPID}`);
         const resp = await axios.post(url, { ref: resolvedRef, app_id: APPID }, {
             headers: { 'Content-Type': 'application/json' },
@@ -664,7 +664,7 @@ async function getEncryptKey(wxid) {
         const entry = selectYybEntry(cleanWxid);
         const resolvedRef = entry.ref;
         const url = entry.server + '/wxapp/operateWxData';
-        
+
         if (debug) log(`[YYB] 请求EncryptKey: ref=${resolvedRef}, app_id=${APPID}`);
         const resp = await axios.post(url, {
             ref: resolvedRef,
