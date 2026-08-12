@@ -15,12 +15,10 @@ Cron: 5 9,12,20 * * *
 功能：自动执行甜润世界小程序签到、种植石斛，支持多账号执行。
 
 配置说明：
-1. 微信 code 服务（接口来自 铛铛一下.py 的本地 code 服务）：
-   trsj_server                                        本地 code 服务地址列表（每个地址 = 一个微信账号）
-   - 无默认值，必须通过环境变量配置
-   - 多账号支持使用 &、逗号或换行分隔
-   - 请求格式：GET http://{server}/login?appId=wx210e40a77dbe7a27
-   - 响应示例：{"err":0,"code":"0f...","msg":"success"}
+1. 微信 code 服务（YYB Go 取码服务，格式同铛铛一下.py）：
+   YYB_SERVER                YYB Go 服务地址，格式：地址@微信账号标识，多账号换行分隔
+   - 请求：POST http://{server}/wxapp/getCode  body: {"ref":"<账号标识>","app_id":"wx210e40a77dbe7a27"}
+   - 响应：{"code":0,"data":{"result":{"code":"<微信login code>"}}}
 
 2. 品赞代理（可选，业务请求优先走代理，失败直连兜底）：
    PROXY_API                                          品赞代理提取 API
@@ -66,14 +64,9 @@ BASE_HEADERS = {
     "Referer": f"https://servicewechat.com/{APPID}/page-frame.html",
 }
 
-# ========== 微信 code 服务配置（接口来自铛铛一下.py）==========
-_CODE_SERVERS_RAW = os.getenv("trsj_server", "").strip()
-DEFAULT_CODE_SERVERS = []
-if _CODE_SERVERS_RAW:
-    _raw_list = re.split(r"[&\n,]", _CODE_SERVERS_RAW)
-    CODE_SERVERS = [x.strip().lstrip("http://").lstrip("https://").rstrip("/") for x in _raw_list if x.strip()]
-else:
-    CODE_SERVERS = list(DEFAULT_CODE_SERVERS)
+# ========== YYB Go 取码服务配置（格式同铛铛一下.py）==========
+_YYB_SERVER_RAW = os.getenv("YYB_SERVER", "").strip()
+CODE_SERVERS = [line.strip() for line in _YYB_SERVER_RAW.splitlines() if line.strip()]
 
 # ========== 品赞代理 + PushPlus 配置（参考铛铛一下.py）==========
 PLUSPLUS_TOKEN = os.getenv("PLUSPLUS_TOKEN", "")
@@ -87,7 +80,7 @@ ENABLE_DIRECT_FALLBACK = True
 REQUEST_TIMEOUT = 30
 
 if not CODE_SERVERS:
-    print("❌ 未配置环境变量 trsj_server（本地 code 服务地址，多账号用 &、逗号或换行分隔）")
+    print("❌ 未配置环境变量 YYB_SERVER（格式：地址@微信账号标识，多账号换行分隔）")
     exit(1)
 print(f"✅ 读取到 {len(CODE_SERVERS)} 个 code 服务（账号）")
 
@@ -260,30 +253,54 @@ def request_with_proxy(
     return direct_session().request(method, url, **kwargs)
 
 
-def get_code(server: str) -> Optional[str]:
-    """向本地 code 服务申请微信小程序 login code（接口来自铛铛一下.py）。
+def parse_yyb_entry(raw: str) -> Tuple[str, str]:
+    """解析 YYB_SERVER 条目：地址@微信账号标识 → (server, ref)"""
+    raw = raw.strip()
+    if "@" not in raw:
+        print(f"❌ YYB_SERVER 格式应为 地址@微信账号标识，当前值：{raw}")
+        return "", ""
+    server, ref = raw.split("@", 1)
+    server = server.strip().lstrip("http://").lstrip("https://").rstrip("/")
+    ref = ref.strip()
+    if not server or not ref:
+        print(f"❌ YYB_SERVER 缺少地址或微信账号标识，当前值：{raw}")
+        return "", ""
+    return server, ref
 
-    请求: GET http://{server}/login?appId={APPID}
-    返回: {"err": 0, "code": "<微信 login code>", ...}
-    成功返回 code 字符串，失败返回 None。
+
+def get_code(entry: str) -> Optional[str]:
+    """通过 YYB Go 取码服务获取微信小程序 login code。
+
+    请求: POST http://{server}/wxapp/getCode  body: {"ref":"<ref>","app_id":"<APPID>"}
+    返回: {"code":0,"data":{"result":{"code":"<微信login code>"}}}
     """
-    url = f"http://{server}/login"
-    print(f"🔐 [授权] 请求本地 code 服务: {url}")
+    server, ref = parse_yyb_entry(entry)
+    if not server or not ref:
+        return None
+
+    url = f"http://{server}/wxapp/getCode"
+    print(f"🔐 [授权] 请求 YYB Go 取码: {url}")
 
     try:
-        response = direct_session().get(url, params={"appId": APPID}, timeout=20)
+        response = direct_session().post(
+            url, json={"ref": ref, "app_id": APPID}, timeout=20
+        )
         data = response.json()
     except Exception as exc:
-        print(f"❌ [授权] {server} 获取 code 异常: {exc}")
+        print(f"❌ [授权] {entry} 获取 code 异常: {exc}")
         return None
 
-    if not isinstance(data, dict) or data.get("err") != 0 or not data.get("code"):
-        print(f"❌ [授权] {server} code 获取失败: {json.dumps(data, ensure_ascii=False)[:400]}")
+    if data.get("code") != 0:
+        print(f"❌ [授权] {entry} 取码失败: {json.dumps(data, ensure_ascii=False)[:400]}")
         return None
 
-    code = str(data["code"])
-    print(f"✅ [授权] {server} code 获取成功: {code[:10]}... (len={len(code)})")
-    return code
+    code = ((data.get("data") or {}).get("result") or {}).get("code")
+    if not code:
+        print(f"❌ [授权] {entry} 返回无 code: {json.dumps(data, ensure_ascii=False)[:400]}")
+        return None
+
+    print(f"✅ [授权] {entry} 取码成功: {str(code)[:10]}... (len={len(str(code))})")
+    return str(code)
 
 
 def send_pushplus(title: str, content: str) -> None:
