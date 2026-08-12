@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 # name: 小天鹅签到
 # cron: 10 8,20 * * *
-new Env('小天鹅签到');
-
 '''
 qxqyxte变量名  格式 备注#ucAccessToken
 

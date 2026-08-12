@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # name: OPPO商城
 # cron: 10 8,20 * * *
-new Env('OPPO商城');
 """
 OPPO 商城 微信小程序 签到 + 浏览任务脚本
 版本: 2.1.0

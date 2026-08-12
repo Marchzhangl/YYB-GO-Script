@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 # name: 小天鹅精灵
 # cron: 15 8,20 * * *
-new Env('小天鹅精灵');
-
 '''
 qxqyxte 变 量名  格式 备注#ucAccessToken
 

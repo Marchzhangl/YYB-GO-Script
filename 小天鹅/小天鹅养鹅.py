@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 # name: 小天鹅养鹅
 # cron: 20 8,20 * * *
-new Env('小天鹅养鹅');
-
 """
 @author: wyourname
 同步代码运行器模板

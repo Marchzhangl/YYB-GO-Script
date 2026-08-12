@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 # name: 甜润世界
 # cron: 5 9,12,20 * * *
-new Env('甜润世界');
-
 """
 Author: anonymous
 Date: 2026.08.08

@@ -2,7 +2,6 @@
 """
 name: EOOS Emby 签到
 cron: 30 8,20 * * *
-new Env('EOOS Emby 签到');
 """
 
 """
