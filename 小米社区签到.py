@@ -8,6 +8,7 @@
   YYB_SERVER：每行一个 server@微信账号标识，例如 yyb-go:8000@1
   MI_COMMUNITY_APPID：可选，默认使用小米社区小程序 AppID
   MI_COMMUNITY_NOTIFY：可选，默认 1；设为 0 可关闭青龙通知
+  MI_COMMUNITY_REF：可选，仅运行指定微信账号标识，便于单账号测试
 
 依赖：requests、青龙自带 notify.py
 """
@@ -18,6 +19,7 @@ import json
 import uuid
 import re
 import base64
+from pathlib import Path
 from urllib.parse import quote, urljoin, urlparse
 import requests
 from requests.adapters import HTTPAdapter
@@ -43,6 +45,9 @@ SCRIPT_NAME = "小米社区签到"
 NOTIFY_ENABLED = os.getenv("MI_COMMUNITY_NOTIFY", "1").strip().lower() not in {"0", "false", "off", "no"}
 UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.73(0x18004939) NetType/WIFI Language/zh_CN"
 FLOW_STEPS = 8
+CACHE_PATH = Path(os.getenv("MI_COMMUNITY_CACHE", "/ql/data/config/mi_community_sessions.json"))
+if not CACHE_PATH.parent.exists():
+    CACHE_PATH = Path(__file__).resolve().with_name(".mi_community_sessions.json")
 
 
 def flow_start(step, message):
@@ -67,8 +72,50 @@ def send_notification(lines):
         print(f"⚠️ 通知发送失败（不影响签到结果）：{exc}")
 
 
+def load_cached_session(ref):
+    try:
+        data = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError, OSError):
+        return {}
+    account = data.get(str(ref), {}) if isinstance(data, dict) else {}
+    if not isinstance(account, dict):
+        return {}
+    return {
+        name: str(account[name])
+        for name in ("passToken", "userId", "cUserId")
+        if account.get(name)
+    }
+
+
+def save_cached_session(ref, source):
+    values = {
+        name: str(source[name])
+        for name in ("passToken", "userId", "cUserId")
+        if source.get(name)
+    }
+    if not values.get("passToken") or not values.get("userId"):
+        return
+    try:
+        try:
+            data = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                data = {}
+        except (FileNotFoundError, ValueError, OSError):
+            data = {}
+        data[str(ref)] = values
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = CACHE_PATH.with_suffix(CACHE_PATH.suffix + ".tmp")
+        temp_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        os.chmod(temp_path, 0o600)
+        os.replace(temp_path, CACHE_PATH)
+        os.chmod(CACHE_PATH, 0o600)
+    except OSError as exc:
+        raise RuntimeError(f"小米会话票据保存失败：{exc}") from exc
+
+
 def entries():
     result = []
+    selected_ref = os.getenv("MI_COMMUNITY_REF", "").strip()
     for raw in os.getenv("YYB_SERVER", "").splitlines():
         raw = raw.strip()
         if not raw:
@@ -77,7 +124,7 @@ def entries():
             print("❌ YYB_SERVER 格式应为 地址@微信账号标识，已跳过一行")
             continue
         server, ref = raw.rsplit("@", 1)
-        if server and ref:
+        if server and ref and (not selected_ref or ref == selected_ref):
             result.append((server.rstrip("/"), ref))
     return result
 
@@ -158,7 +205,7 @@ def get_code(server, ref):
     return code, user_result
 
 
-def login_and_sign(code, wx_user_info):
+def login_and_sign(code, wx_user_info, ref):
     session = requests.Session()
     session.mount(
         "https://",
@@ -196,6 +243,7 @@ def login_and_sign(code, wx_user_info):
     )
     token_login.raise_for_status()
     token_body = {}
+    session_tokens = {}
     if token_login.is_redirect:
         # 已绑定且此前登录过的账号，tokenLogin 可能通过 302 直接进入
         # serviceLogin。响应中的 Set-Cookie 已由 Session 自动保存，因此
@@ -208,7 +256,10 @@ def login_and_sign(code, wx_user_info):
             or redirect_target.path.rstrip("/") != "/pass/serviceLogin"
         ):
             raise RuntimeError(f"小米会话接口发生未知重定向（HTTP {token_login.status_code}）")
-        flow_ok("小米账号已有登录状态，已进入 serviceLogin 流程")
+        session_tokens = load_cached_session(ref)
+        if not session_tokens.get("passToken") or not session_tokens.get("userId"):
+            raise RuntimeError("小米账号已有登录状态，但本地缺少首次登录票据，请重新授权后再执行")
+        flow_ok("小米账号已有登录状态，已加载本地会话票据")
     else:
         try:
             token_text = token_login.text.removeprefix("&&&START&&&")
@@ -223,12 +274,14 @@ def login_and_sign(code, wx_user_info):
             ) from exc
         if not isinstance(token_body, dict) or not token_body.get("passToken"):
             raise RuntimeError("小米会话建立失败")
+        session_tokens = token_body
+        save_cached_session(ref, token_body)
         flow_ok("小米账号会话建立成功")
 
-    # tokenLogin 只在 JSON 中返回账号票据，小程序会手动写入 Cookie 后再取 STS。
+    # 小程序会把 tokenLogin 返回或本地缓存的账号票据写入 Cookie 后再取 STS。
     for name in ("passToken", "userId", "cUserId"):
-        if token_body.get(name):
-            session.cookies.set(name, str(token_body[name]), domain="account.xiaomi.com", path="/")
+        if session_tokens.get(name):
+            session.cookies.set(name, str(session_tokens[name]), domain="account.xiaomi.com", path="/")
     flow_start(5, "获取小米社区 serviceLogin 跳转地址")
     service_login = session.get(
         f"{ACCOUNT}/pass/serviceLogin",
@@ -244,6 +297,7 @@ def login_and_sign(code, wx_user_info):
     sts_url = service_body.get("location")
     if service_body.get("code") != 0 or not sts_url:
         raise RuntimeError(f"小米 serviceLogin 失败（响应码：{service_body.get('code')}）")
+    save_cached_session(ref, service_body)
     flow_ok("serviceLogin 校验成功")
     flow_start(6, "执行 STS 登录并建立小米社区会话")
     sts = session.get(sts_url, timeout=20)
@@ -309,7 +363,7 @@ def main():
         print(f"{'─' * 54}")
         try:
             code, wx_user_info = get_code(server, ref)
-            result = login_and_sign(code, wx_user_info)
+            result = login_and_sign(code, wx_user_info, ref)
             line = f"账号 {ref}：✅ {result}"
             print(f"  🏁 账号 {ref} 流程完成：{result}")
             results.append(line)
