@@ -1,6 +1,5 @@
 // name: 携程会员
 // cron: 24 7,19 * * *
-const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
@@ -23,8 +22,6 @@ function parseYybGoEntry(rawValue) {
     }
     let server = value.slice(0, atIndex).trim();
     const ref = value.slice(atIndex + 1).trim();
-    if (server.startsWith("http://")) server = server.slice(7);
-    else if (server.startsWith("https://")) server = server.slice(8);
     server = server.replace(/\/+$/, "");
     if (!server || !ref) return { server: "", ref: "" };
     return { server, ref };
@@ -32,9 +29,9 @@ function parseYybGoEntry(rawValue) {
 async function getCode(server) {
     const { server: parsedServer, ref } = parseYybGoEntry(server);
     if (!parsedServer || !ref) return null;
-    const url = "http://" + parsedServer + "/wxapp/getCode";
+    const url = `${/^https?:\/\//i.test(parsedServer) ? parsedServer : `http://${parsedServer}`}/wxapp/getCode`;
     try {
-        const { data } = await axios.post(url, { ref, app_id: MINI_APP_ID }, { timeout: 20000, proxy: false });
+        const { data } = await postJson(url, { ref, app_id: MINI_APP_ID }, {}, 20000);
         const code = data && data.data && data.data.result && data.data.result.code;
         if (!data || data.code !== 0 || !code) {
             console.log(parsedServer + " 获取code失败: " + JSON.stringify(data));
@@ -55,8 +52,10 @@ const PACKAGE_VERSION = "1055";
 const CLIENT_ID = "09031101311473737701";
 const ACCESS_CODE = "XTHYY69RNSKLWEICHATMINI";
 const API_BASE = "https://m.ctrip.com";
+const SEC_API_BASE = "https://sec-m.ctrip.com";
 const PASSPORT_BASE = "https://passport.ctrip.com/gateway/api";
 const TOKEN_CACHE_FILE = path.join(__dirname, "token_caches", "ctrip_token_cache.json");
+const NOTIFY_ENABLED = process.env.XCHY_NOTIFY !== "0";
 try { fs.mkdirSync(path.dirname(TOKEN_CACHE_FILE), { recursive: true }); } catch (e) {}
 const TASK_CHANNELS = [
   { label: "做任务赚积分", channelCode: "2H3294O46M" },
@@ -111,6 +110,30 @@ function parseJsonMaybe(text) {
   }
 }
 
+async function postJson(url, data, headers = {}, timeout = 30000) {
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(data || {}),
+        signal: controller.signal,
+      });
+      const text = await response.text();
+      return { status: response.status, data: parseJsonMaybe(text), text };
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await sleep(800);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw new Error(`${new URL(url).host} 请求失败: ${lastError?.cause?.code || lastError?.message || lastError}`);
+}
+
 function parseAccount(raw) {
   const text = String(raw || "").trim();
   if (!text) return {};
@@ -154,7 +177,82 @@ function taskId(task = {}) {
 }
 
 function taskTitle(task = {}) {
-  return task.taskName || task.title || task.name || task.buttonName || `任务${taskId(task)}`;
+  return task.displayName || task.internalName || task.taskName || task.title || task.name || task.buttonName || `任务${taskId(task)}`;
+}
+
+function taskErrorText(data = {}) {
+  const code = Number(data?.code);
+  const messages = {
+    400121: "任务行为校验未通过，需在真实页面内完成",
+    400134: "任务类型禁止接口直接上报，需完成指定页面或活动",
+    401010: "当前不可领取该奖励",
+    410200: "该任务不支持当前领奖方式",
+    404001: "携程登录态无效",
+    404002: "账号不满足活动参与条件",
+  };
+  return messages[code] || data?.message || "未知错误";
+}
+
+class AccountError extends Error {
+  constructor(kind, message) {
+    super(message);
+    this.kind = kind;
+  }
+}
+
+function loggedIn(data = {}) {
+  const status = data?.baseLoginStatus;
+  return okBusiness(data) && (status === true || Number(status) === 1);
+}
+
+function awardErrorText(data = {}) {
+  const code = Number(data?.code);
+  const messages = {
+    401010: "当前不可领取该升级奖励",
+    404001: "登录状态无效",
+    404002: "不满足活动参与条件",
+    500027: "需要滑块验证，已跳过",
+  };
+  const message = String(data?.message || "");
+  if (messages[code]) return messages[code];
+  if (/SUCCESS/i.test(message)) return "成功";
+  if (/CITY_ID/i.test(message)) return "当前旅行城市状态不满足领奖条件";
+  return message || "领取失败";
+}
+
+function chineseMessage(message, fallback = "成功") {
+  const text = String(message || "").trim();
+  return !text || /^SUCCESS$/i.test(text) ? fallback : text;
+}
+
+async function sendQingLongNotify(lines) {
+  if (!NOTIFY_ENABLED) {
+    console.log("青龙通知已关闭（XCHY_NOTIFY=0）");
+    return;
+  }
+  const candidates = [
+    "./sendNotify",
+    path.join(process.cwd(), "sendNotify"),
+    "/ql/data/scripts/sendNotify",
+  ];
+  let sender = null;
+  for (const candidate of candidates) {
+    try {
+      const mod = require(candidate);
+      sender = mod?.sendNotify || (typeof mod === "function" ? mod : null);
+      if (typeof sender === "function") break;
+    } catch {}
+  }
+  if (typeof sender !== "function") {
+    console.log("青龙通知发送失败：未找到 sendNotify 模块");
+    return;
+  }
+  try {
+    await sender("携程会员任务", lines.join("\n"), { disableHitokoto: true });
+    console.log("青龙通知发送成功");
+  } catch (e) {
+    console.log(`青龙通知发送失败：${e.message || e}`);
+  }
 }
 
 function pickTasks(data = {}) {
@@ -171,14 +269,9 @@ function pickTasks(data = {}) {
 }
 
 async function gateway(pathname, data) {
-  const res = await axios.post(`${PASSPORT_BASE}/${pathname}`, JSON.stringify(data), {
-    timeout: 30000,
-    validateStatus: () => true,
-    headers: {
-      "Content-Type": "application/json",
+  const res = await postJson(`${PASSPORT_BASE}/${pathname}`, data, {
       "User-Agent": "Mozilla/5.0 MicroMessenger MiniProgramEnv/Windows",
       Referer: `https://servicewechat.com/${MINI_APP_ID}/${PACKAGE_VERSION}/page-frame.html`,
-    },
   });
   if (res.status !== 200 || Number(res.data?.ReturnCode) !== 0) {
     throw new Error(`${pathname}失败: ${JSON.stringify(res.data)}`);
@@ -192,15 +285,11 @@ async function h5Api(pathname, data, account) {
   if (account.duid) cookies.push(`DUID=${encodeURIComponent(account.duid)}`);
   if (account.udl) cookies.push(`_udl=${account.udl}`);
   cookies.push(`GUID=${CLIENT_ID}`);
-  const res = await axios.post(`${API_BASE}${pathname}`, JSON.stringify(data || {}), {
-    timeout: 30000,
-    validateStatus: () => true,
-    headers: {
-      "Content-Type": "application/json",
+  const base = /^\/restapi\/soa2\/22769\//.test(pathname) ? SEC_API_BASE : API_BASE;
+  const res = await postJson(`${base}${pathname}`, data || {}, {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 MicroMessenger/3.9.12 MiniProgramEnv/Windows WindowsWechat/WMPF",
       Referer: "https://m.ctrip.com/",
       Cookie: `${cookies.join("; ")};`,
-    },
   });
   return {
     status: res.status,
@@ -211,18 +300,20 @@ async function h5Api(pathname, data, account) {
 
 class Task {
   constructor(raw) {
-        this.server = raw;
-        const _yyb = parseYybGoEntry(this.server);
-        this.ref = _yyb.ref;
-        this.openid = _yyb.ref;
+    this.server = raw;
+    const yyb = parseYybGoEntry(raw);
+    this.ref = yyb.ref;
     this.index = userIdx++;
-    const account = parseAccount(raw);
-    this.openid = account.openid || "";
-    this.ticket = account.ticket || "";
-    this.duid = account.duid || "";
-    this.udl = account.udl || "";
+    this.openid = "";
+    this.ticket = "";
+    this.duid = "";
+    this.udl = "";
     this.uid = "";
-    this.cacheKey = this.openid || (this.ticket ? md5(this.ticket).slice(0, 16) : `account_${this.index}`);
+    this.authToken = "";
+    this.cacheKey = this.ref || `account_${this.index}`;
+    this.initialPoints = null;
+    this.finalPoints = null;
+    this.summary = "未执行";
   }
 
   getCached() {
@@ -238,18 +329,24 @@ class Task {
       ...(this.duid ? { duid: this.duid } : {}),
       ...(this.udl ? { udl: this.udl } : {}),
       ...(this.uid ? { uid: this.uid } : {}),
+      ...(this.authToken ? { authToken: this.authToken } : {}),
       ...extra,
       updatedAt: new Date().toISOString(),
     };
     writeCache(cache);
   }
 
-  removeTicket() {
+  clearCachedLogin() {
     const cache = readCache();
     if (cache[this.cacheKey]) {
-      delete cache[this.cacheKey].ticket;
+      for (const key of ["ticket", "duid", "udl", "uid", "authToken"]) delete cache[this.cacheKey][key];
       writeCache(cache);
     }
+    this.ticket = "";
+    this.duid = "";
+    this.udl = "";
+    this.uid = "";
+    this.authToken = "";
   }
 
   async getOperateData() {
@@ -259,6 +356,7 @@ class Task {
 
   async login() {
     const op = await this.getOperateData();
+    if (!op.code) throw new AccountError("login_failed", "获取微信登录凭证失败");
     const wxLogin = await gateway("soa2/14553/wechatLogin.json", {
       AccountHead: {},
       Data: {
@@ -287,6 +385,7 @@ class Task {
     if (!auth?.token || auth?.resultStatus?.returnCode !== 0) {
       throw new Error(`authenticate未返回第三方token: ${JSON.stringify(auth)}`);
     }
+    this.authToken = auth.token;
 
     const login = await gateway("soa2/12559/thirdPartyLogin.json", {
       AccountHead: {},
@@ -307,7 +406,10 @@ class Task {
       },
     });
     if (!login?.ticket || login?.resultStatus?.returnCode !== 0) {
-      throw new Error(`thirdPartyLogin未返回ticket: ${JSON.stringify(login)}`);
+      if (Number(login?.resultStatus?.returnCode) === 550005) {
+        throw new AccountError("unbound", "未绑定携程，登录失败");
+      }
+      throw new AccountError("login_failed", `携程登录失败（代码 ${login?.resultStatus?.returnCode ?? "未知"}）`);
     }
 
     this.ticket = login.ticket;
@@ -324,8 +426,22 @@ class Task {
     this.duid = this.duid || cached.duid || "";
     this.udl = this.udl || cached.udl || "";
     this.uid = this.uid || cached.uid || "";
-    if (this.ticket) return;
+    this.authToken = this.authToken || cached.authToken || "";
+    if (this.ticket && await this.validateLogin()) return;
+    if (this.ticket) {
+      console.log(`账号[${this.index}] 缓存登录态已失效，重新登录`);
+      this.clearCachedLogin();
+    }
     await this.login();
+    if (!await this.validateLogin()) {
+      this.clearCachedLogin();
+      throw new AccountError("login_failed", "登录状态无效");
+    }
+  }
+
+  async validateLogin() {
+    const point = await this.h5Model("22769", "getSignInUserBasicInfo", {});
+    return point.status === 200 && loggedIn(point.data);
   }
 
   headers(raw) {
@@ -353,6 +469,7 @@ class Task {
   }
 
   dataHead(extra = {}) {
+    const { useAuthToken = false, ...fields } = extra;
     return {
       cid: CLIENT_ID,
       ctok: "",
@@ -360,9 +477,9 @@ class Task {
       lang: "01",
       sid: "",
       syscode: "30",
-      auth: this.ticket || "",
+      auth: useAuthToken ? (this.authToken || "") : "",
       sauth: "",
-      ...extra,
+      ...fields,
       extension: [
         { name: "appId", value: MINI_APP_ID },
         { name: "scene", value: "1001" },
@@ -374,11 +491,7 @@ class Task {
     const body = { ...(data || {}) };
     if (addHead) body.head = this.dataHead(body.head || {});
     const raw = JSON.stringify(body);
-    const res = await axios.post(`${API_BASE}${pathname}?_fxpcqlniredt=${CLIENT_ID}`, raw, {
-      timeout: 30000,
-      validateStatus: () => true,
-      headers: this.headers(raw),
-    });
+    const res = await postJson(`${API_BASE}${pathname}?_fxpcqlniredt=${CLIENT_ID}`, body, this.headers(raw));
     return {
       status: res.status,
       data: res.data,
@@ -387,7 +500,7 @@ class Task {
   }
 
   async querySignStatus() {
-    const res = await this.ctripRequest("/restapi/soa2/13012/getSignTodayInfoProxy", {});
+    const res = await this.ctripRequest("/restapi/soa2/13012/getSignTodayInfoProxy", { head: this.dataHead({ useAuthToken: true }) });
     if (res.status === 401 && res.data?.code === "11001") {
       console.log(`账号[${this.index}] 签到状态接口被携程运行态校验拦截: ${res.data.message}`);
       return null;
@@ -459,15 +572,32 @@ class Task {
       return null;
     }
     if (!okBusiness(res.data)) {
-      console.log(`账号[${this.index}] 任务接口 ${name} 返回: ${res.text.slice(0, 800)}`);
+      const code = res.data?.code ?? "未知";
+      console.log(`账号[${this.index}] 任务接口 ${name} 失败: ${taskErrorText(res.data)}（代码 ${code}）`);
       return res.data;
     }
     return res.data;
   }
 
   async queryTaskList(channelCode, label) {
-    const data = await this.taskModel("userTaskList", { channelCode });
+    const payload = {
+      channelCode,
+      rmsToken: "",
+      platform: "miniProgram",
+      oAuthHead: {},
+      version: "3",
+      osType: "ios",
+      appVersion: "",
+      subOsType: "iphone",
+    };
+    if (channelCode === "2H3294O46M") {
+      payload.extMap = { mktTaskSort: "", filterFields: "", blackField: "" };
+    }
+    const data = await this.taskModel("userTaskList", payload);
     if (!data) return [];
+    if (Object.prototype.hasOwnProperty.call(data, "isLogin") && Number(data.isLogin) !== 1) {
+      throw new AccountError("login_failed", "登录状态无效");
+    }
     const tasks = pickTasks(data);
     console.log(
       `账号[${this.index}] ${label}: ${data.projectName || channelCode}，待做${(data.todoTaskList || []).length}，已完成${(data.finishTaskList || []).length}，过滤${(data.filteredTaskList || []).length}`
@@ -485,7 +615,7 @@ class Task {
       receiveTaskId: receivedTaskId,
     });
     if (okBusiness(data)) {
-      console.log(`账号[${this.index}] 领取任务发奖成功: ${taskTitle(task)} ${data.message || ""}`);
+      console.log(`账号[${this.index}] 领取任务发奖成功: ${taskTitle(task)}，${chineseMessage(data.message)}`);
     }
   }
 
@@ -494,19 +624,22 @@ class Task {
     if (!id) return;
     const status = Number(task.status ?? task.taskStatus ?? 0);
     const title = taskTitle(task);
-    const base = { channelCode, taskId: id, status, done: 0 };
+    const base = { channelCode, taskId: id, status: 0 };
     console.log(`账号[${this.index}] ${label} 执行任务: ${title}，status=${status}`);
-    const receive = await this.taskModel("todoTask", base);
-    const receivedTaskId = receive?.infoMap?.receivedTaskId || receive?.receivedTaskId || "";
-    if (okBusiness(receive)) {
-      console.log(`账号[${this.index}] ${label} 任务上报成功: ${title} ${receive.message || ""}`);
-      await this.receiveTaskAward(channelCode, task, receivedTaskId);
+    let receivedTaskId = "";
+    if (status === 0) {
+      const receive = await this.taskModel("todoTask", { ...base, done: 0 });
+      if (!okBusiness(receive)) return;
+      receivedTaskId = receive?.infoMap?.receivedTaskId || receive?.receivedTaskId || "";
+      console.log(`账号[${this.index}] ${label} 任务领取成功: ${title}`);
     }
 
-    await await sleep(1000, 1800);
-    const done = await this.taskModel("todoTask", { ...base, status: 0, done: 1 });
+    await sleep(1200);
+    const done = await this.taskModel("todoTask", { ...base, done: 1 });
     if (okBusiness(done)) {
-      console.log(`账号[${this.index}] ${label} 浏览完成上报成功: ${title} ${done.message || ""}`);
+      console.log(`账号[${this.index}] ${label} 浏览完成上报成功: ${title}，${chineseMessage(done.message)}`);
+      receivedTaskId ||= done?.infoMap?.receivedTaskId || done?.receivedTaskId || "";
+      await this.receiveTaskAward(channelCode, task, receivedTaskId);
     }
   }
 
@@ -515,10 +648,10 @@ class Task {
     if (!id) return;
     const data = await this.taskModel("awardTask", { channelCode, taskId: id });
     if (okBusiness(data)) {
-      const award = data.awardName || data.rewardName || data.message || "成功";
+      const award = chineseMessage(data.awardName || data.rewardName || data.message);
       console.log(`账号[${this.index}] ${label} 领奖成功: ${taskTitle(task)}，${award}`);
     } else if (data) {
-      console.log(`账号[${this.index}] ${label} 领奖返回: ${taskTitle(task)}，${JSON.stringify(data).slice(0, 500)}`);
+      console.log(`账号[${this.index}] ${label} 领奖失败: ${taskTitle(task)}，${taskErrorText(data)}（代码 ${data.code ?? "未知"}）`);
     }
   }
 
@@ -528,7 +661,7 @@ class Task {
       const status = Number(task.status ?? task.taskStatus ?? 0);
       if (status === 0 || status === 1) {
         await this.doTask(channelCode, task, label);
-        await await sleep(800, 1500);
+        await sleep(1000);
       }
     }
 
@@ -537,7 +670,7 @@ class Task {
       const status = Number(task.status ?? task.taskStatus ?? 0);
       if (status === 2) {
         await this.awardTask(channelCode, task, label);
-        await await sleep(800, 1500);
+        await sleep(1000);
       } else if (status === 3) {
         console.log(`账号[${this.index}] ${label} 已完成: ${taskTitle(task)}`);
       }
@@ -546,12 +679,16 @@ class Task {
 
   async queryPointInfo() {
     const point = await this.h5Model("22769", "getSignInUserBasicInfo", {});
-    if (point.status === 200 && okBusiness(point.data)) {
-      console.log(`账号[${this.index}] 当前会员积分: ${point.data.integratedPoint ?? "未知"}`);
+    if (point.status === 200 && loggedIn(point.data)) {
+      const value = Number(point.data.integratedPoint);
+      console.log(`账号[${this.index}] 当前会员积分: ${Number.isFinite(value) ? value : "未知"}`);
+      return Number.isFinite(value) ? value : null;
     } else {
-      console.log(`账号[${this.index}] 会员积分查询失败: ${point.text.slice(0, 500)}`);
+      throw new AccountError("login_failed", "登录状态无效，积分查询失败");
     }
+  }
 
+  async queryYoyoInfo() {
     const yoyo = await this.h5Model("22769", "travelGameUserAccountInfo", {});
     if (yoyo.status === 200 && okBusiness(yoyo.data)) {
       const info = yoyo.data.travelGameUserInfoDto || {};
@@ -584,38 +721,58 @@ class Task {
           `账号[${this.index}] ${item.label} 领取成功: ${data.data.message || "成功"}${point ? `，积分+${point}` : ""}${exp.levelUp ? "，已升级" : ""}`
         );
       } else if (Number(data.data?.code) === 500027) {
-        console.log(`账号[${this.index}] ${item.label}: 需要滑块验证，跳过`);
-      } else if (/已领取|已经领取|不能领取|暂无|失败|错误/.test(data.data?.message || "")) {
-        console.log(`账号[${this.index}] ${item.label}: ${data.data.message}`);
       } else {
-        console.log(`账号[${this.index}] ${item.label} 返回: ${data.text.slice(0, 600)}`);
+        console.log(`账号[${this.index}] ${item.label}: ${awardErrorText(data.data)}（代码 ${data.data?.code ?? "未知"}）`);
       }
-      await await sleep(800, 1500);
+      await sleep(1000);
     }
   }
 
   async run() {
     await this.ensureLogin();
-    await this.queryPointInfo();
+    this.initialPoints = await this.queryPointInfo();
+    await this.queryYoyoInfo();
     await this.sign();
     for (const channel of TASK_CHANNELS) {
       await this.runTaskChannel(channel);
     }
     await this.tryUpgradeAwards();
-    await this.queryPointInfo();
+    this.finalPoints = await this.queryPointInfo();
+    await this.queryYoyoInfo();
+    this.summary = "执行完成";
     this.saveCache();
   }
 }
 
 !(async () => {
-  
+  const results = [];
   for (const account of SERVERS) {
+    const task = new Task(account);
     try {
-      await new Task(account).run();
+      await task.run();
     } catch (e) {
-      console.log(`账号执行异常: ${e.message || e}`);
+      task.summary = e?.kind === "unbound" ? "未绑定携程，登录失败" : (e.message || "执行失败");
+      console.log(`账号[${task.index}] ${task.summary}`);
     }
-    await await sleep(800, 1500);
+    results.push(task);
+    await sleep(1000);
   }
+
+  console.log("\n===== 执行总结 =====");
+  const summaryLines = [];
+  for (const task of results) {
+    if (task.summary === "未绑定携程，登录失败") {
+      const line = `账号${task.index}：${task.summary}`;
+      console.log(line);
+      summaryLines.push(line);
+      continue;
+    }
+    const initial = task.initialPoints ?? "未知";
+    const final = task.finalPoints ?? "未知";
+    const line = `账号${task.index}：${task.summary}，初始积分${initial} → 结束积分${final}`;
+    console.log(line);
+    summaryLines.push(line);
+  }
+  await sendQingLongNotify(summaryLines);
 })()
   .catch((e) => console.log(e.message || e))
